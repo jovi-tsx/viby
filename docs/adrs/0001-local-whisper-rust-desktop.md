@@ -1,5 +1,10 @@
 # ADR 0001 — Tauri/Rust with local whisper.cpp
 
+> **Status:** records the architecture of the existing embedded prototype.
+> The newer product direction is a bridge to user-managed local AI; see
+> [the README](../../README.md#how-it-works). A replacement engine-integration
+> contract is pending review and implementation.
+
 ## Context
 
 The product must run on Windows, capture audio, show a bottom bar, and insert

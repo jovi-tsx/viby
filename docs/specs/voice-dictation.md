@@ -1,5 +1,10 @@
 # Viby local dictation contract
 
+> **Scope:** this contract describes the current embedded prototype. The user
+> has changed the product direction to a dynamic bridge for user-managed local
+> AI. The [target architecture](../../README.md#how-it-works) is documented;
+> its configurable engine/transport contract still needs review and implementation.
+
 See [project status](../../README.md#project-status) for the current implementation stage.
 
 ## Requirements

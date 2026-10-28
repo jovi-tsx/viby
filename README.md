@@ -4,31 +4,35 @@
 
 # Viby
 
-**Local voice dictation for Windows, powered by Whisper. No cloud, no accounts.**
+**A Windows dictation bridge for your local AI.**
 
-Viby is being built for a simple workflow: press a global shortcut, speak,
-and turn your voice into text without leaving the application you are using.
-Audio capture and speech recognition run on your computer through a native
-Tauri/Rust application.
+Viby is designed to connect the Windows desktop to a local speech-to-text
+engine that the user chooses, configures, and runs. Viby owns the interaction:
+global shortcuts, microphone capture, a compact interface, request handling,
+and the planned insertion of returned text into the original application.
 
-> **Development status:** this is an early source release. Local capture,
-> transcription, provisional previews, preferences, and the confirmation UI
-> are implemented. **Automatic text insertion into other applications is not
-> implemented yet.** Native interaction validation and release packaging are
-> still in progress.
+The user owns the AI runtime, models, and inference setup. Engine selection
+should be configurable at runtime rather than tied to one bundled model.
+
+> **Development status:** the code currently contains an embedded Whisper
+> prototype. Dynamic connections to user-managed local AI engines are **not
+> implemented yet**. Automatic text insertion and release packaging are also
+> unfinished. The setup instructions below document the existing prototype,
+> while the target architecture describes the new product direction.
 
 ## Contents
 
 - [What Viby is for](#what-viby-is-for)
 - [Project status](#project-status)
 - [How it works](#how-it-works)
+- [Engine ownership and integration](#engine-ownership-and-integration)
 - [Requirements](#requirements)
 - [Set up the project](#set-up-the-project)
 - [Run in development](#run-in-development)
 - [Build and run the executable](#build-and-run-the-executable)
-- [Configure a local Whisper model](#configure-a-local-whisper-model)
+- [Configure the current Whisper prototype](#configure-the-current-whisper-prototype)
 - [Use the current prototype](#use-the-current-prototype)
-- [Settings and local storage](#settings-and-local-storage)
+- [Current settings and local storage](#current-settings-and-local-storage)
 - [Architecture](#architecture)
 - [Privacy and network behavior](#privacy-and-network-behavior)
 - [Verification](#verification)
@@ -38,13 +42,16 @@ Tauri/Rust application.
 ## What Viby is for
 
 Viby's intended destination is any Windows application that accepts normal
-pasting: an editor, terminal, message field, or form. It is designed to keep
-the interaction small—a global shortcut and a bottom-edge dock—while keeping
-speech processing local.
+pasting: an editor, terminal, message field, or form. The app provides a small
+dictation interface between those applications and the user's own local AI.
 
-The current prototype is useful for developing and testing the local audio
-and transcription pipeline. Destination and clipboard insertion are still
-planned, so it is not yet a finished system-wide dictation tool.
+A user should be able to run a compatible local speech-to-text service,
+configure Viby to connect to it, and change the engine or model without
+recompiling Viby. The engine is responsible for loading models and performing
+inference; Viby is responsible for the Windows interaction.
+
+The current source is an early implementation of that interaction and audio
+pipeline. It still performs inference through an embedded Whisper adapter.
 
 ## Project status
 
@@ -53,7 +60,8 @@ planned, so it is not yet a finished system-wide dictation tool.
 | Native Windows shell, tray menu, and Options | Implemented |
 | Configurable global dictation and discard shortcuts | Implemented; native interaction verification ongoing |
 | WASAPI microphone capture and audio-level feedback | Implemented |
-| Local Whisper inference and provisional preview | Implemented |
+| Embedded Whisper inference and provisional preview | Implemented in the current prototype |
+| Dynamic connection to user-managed local AI engines | Planned; integration contract still needs implementation |
 | Hold-to-talk and optional press-once confirmation mode | Implemented; remaining native keyboard/regression checks |
 | Non-sensitive preferences and local model selection | Implemented |
 | Automatic paste into the original destination | Planned |
@@ -66,33 +74,56 @@ sending Enter.
 
 ## How it works
 
-A global shortcut reaches the Rust flow controller. The controller starts
-native microphone capture, prepares the selected local Whisper model, and
-coordinates transcription on a worker thread. Audio is mixed to mono and
-resampled to 16 kHz for inference.
+### Target architecture
 
-During capture, the dock's waveform follows the microphone level. If preview
-is enabled, Viby transcribes recent audio windows locally and keeps the newest
-useful provisional result instead of building a stale queue.
-
-When capture ends, the microphone closes and final inference finishes locally.
-Processing has a separate visual state. With confirmation enabled, the flow
-waits for accept or discard.
+1. The user runs a compatible local speech-to-text engine on their computer.
+2. They configure Viby with the engine's supported connection details.
+3. A global shortcut starts microphone capture and displays the dock.
+4. Viby submits the audio through the configured local integration.
+5. The engine returns text; Viby coordinates confirmation and the planned
+   insertion into the original Windows destination.
 
 ```mermaid
 flowchart LR
-    Shortcut["Global shortcut"] --> Flow["Rust flow controller"]
-    Flow --> Capture["WASAPI capture"]
-    Capture --> PCM["In-memory PCM · mono · 16 kHz"]
-    PCM --> Whisper["Local Whisper worker"]
-    Whisper --> Events["Tauri events"]
-    Events --> Dock["Dock, level, and provisional preview"]
-    Flow -. planned .-> Insertion["Validated destination and clipboard insertion"]
+    Input["Shortcut and microphone"] --> Viby["Viby: desktop interaction and request bridge"]
+    Viby --> Engine["User-managed local speech-to-text engine"]
+    Engine --> Result["Text result"]
+    Result --> Desktop["Viby: confirmation and destination insertion"]
 ```
 
+This is the intended architecture. The configurable engine bridge and
+destination insertion are still pending.
+
+### Current prototype
+
+The Rust flow controller starts WASAPI capture, mixes audio to mono,
+resamples it to 16 kHz, and runs inference through an embedded Whisper worker.
+The dock displays microphone level and optional provisional transcription of
+recent audio windows. When capture ends, the microphone closes and final
+local inference finishes. Confirmation mode waits for accept or discard.
+
 Only the provisional preview is shown as spoken content in the current UI.
-Final-result events report completion; there is no full-transcript history,
-copy panel, or automatic insertion yet.
+There is no full-transcript history, copy panel, or automatic insertion.
+
+## Engine ownership and integration
+
+| Viby is responsible for | The user's local AI engine is responsible for |
+| --- | --- |
+| Global shortcuts and capture controls | Starting and operating the AI runtime |
+| Microphone capture and request coordination | Obtaining, loading, and managing models |
+| Connection settings and result handling | Speech recognition and inference |
+| Cancellation, errors, and UI state | Hardware acceleration and runtime resources |
+| Confirmation and planned Windows insertion | Producing a supported text result from audio |
+
+A compatible integration needs an **audio-in, text-out** contract. Support
+depends on the interface the engine exposes or an integration adapter.
+A text-only language model needs a separate speech-to-text component before it
+can participate in this workflow.
+
+The transport, capability negotiation, and provider configuration have not
+been implemented. The current Options window selects a local Whisper file;
+it does not yet offer an endpoint/provider selector. The documentation does
+not claim that arbitrary AI runtimes can already be connected.
 
 ## Requirements
 
@@ -251,9 +282,12 @@ installers and a validated installation flow are still planned. The first
 native build can take longer because Rust and whisper.cpp compile native
 dependencies.
 
-## Configure a local Whisper model
+## Configure the current Whisper prototype
 
-Viby does not bundle weights or download a model during dictation. Obtain a
+This section applies to the embedded prototype. In the target architecture,
+model installation and loading belong to the user's local AI engine.
+
+The current prototype does not bundle weights or download a model during dictation. Obtain a
 compatible whisper.cpp **GGML `.bin` model** separately, following the upstream
 [model documentation](https://github.com/ggml-org/whisper.cpp/tree/master/models).
 
@@ -320,7 +354,10 @@ implementation stage.
 - Capture is bounded to two minutes; exceeding the limit produces an error.
 - Reduced motion follows Windows. Provisional previews can be disabled.
 
-## Settings and local storage
+## Current settings and local storage
+
+These settings describe the embedded prototype. Dynamic engine/provider
+configuration has not been implemented.
 
 | Setting | Default | Behavior |
 | --- | --- | --- |
@@ -348,12 +385,15 @@ them explicitly.
 
 ## Architecture
 
+The table and source map below describe the current embedded prototype.
+The target engine boundary is described in [How it works](#how-it-works).
+
 | Layer | Implementation | Responsibility |
 | --- | --- | --- |
 | Desktop host | Tauri 2 + Rust | Native lifecycle, tray, windows, commands, and events |
 | Interface | Vanilla TypeScript + Vite | Local Options form and bottom dock |
 | Capture | CPAL / WASAPI | Audio capture, level measurement, and disposable buffers |
-| Speech recognition | whisper-rs / whisper.cpp | Loading local models and local inference |
+| Speech recognition (current prototype) | whisper-rs / whisper.cpp | Embedded local inference; intended to be replaced by configurable local-engine integration |
 | Preferences | tauri-plugin-store | Persisting configuration without dictation content |
 | Windows integration | windows-rs | Native window behavior and local-path checks |
 | Destination insertion | Planned adapter | Validating the original target and preserving the clipboard |
@@ -386,22 +426,26 @@ See [the stack](docs/architecture/STACK.md),
 
 ## Privacy and network behavior
 
-The dictation path uses local microphone buffers and a local Whisper model.
-There is no account, transcription API, remote STT fallback, or retained
-dictation history.
+The target product keeps dictation connected to the user's own local AI.
+Communication with a user-managed engine will require a defined local
+integration contract; the transport and local-only validation still need
+implementation. A cloud provider or remote transcription fallback is outside
+this local-engine direction.
+
+The current prototype performs inference in-process through Whisper. It has
+no engine-service connection, account, transcription API, remote fallback,
+or retained dictation history.
 
 Audio and text are temporary. Cancel, stop/finalization, and exit dispose of
-data associated with the flow. Diagnostics record operational metadata such as
-states, counts, timings, and errors, rather than recognized text or clipboard
-contents.
+data associated with the flow. Diagnostics record states, counts, timings,
+and errors rather than recognized text or clipboard contents.
 
-Internet access is needed to obtain build dependencies and model weights during
-setup. Development mode connects the native WebView to the local Vite server.
-Production UI assets are bundled with the executable.
+Internet access is needed to obtain build dependencies and, for the current
+prototype, model weights during setup. Development mode connects the WebView
+to the local Vite server. Production UI assets are bundled with the executable.
 
-The insertion contract requires a future adapter to confirm that the original
-destination is still safe, preserve unrelated clipboard contents, and keep
-Enter opt-in. Those are requirements for the unfinished insertion stage.
+The planned insertion adapter must confirm that the original destination is
+safe, preserve unrelated clipboard contents, and keep Enter opt-in.
 
 ## Verification
 
@@ -500,6 +544,7 @@ See [branding documentation](assets/branding/README.md).
 | The microphone is unavailable | Check the selected input device and Windows microphone access for desktop apps. |
 | A take is too short or returns no text | Speak for longer and check that the selected microphone is receiving input. |
 | Preview text changes or disappears | It covers recent speech, clears outside recording, and is not a transcript history. |
+| I cannot choose an AI endpoint/provider | Dynamic local-engine integration is planned; the current prototype only exposes the embedded Whisper settings. |
 | Recognition finishes but nothing is pasted | Automatic insertion is not implemented yet, including when accepting a confirmation. |
 
 ## Contributing and license

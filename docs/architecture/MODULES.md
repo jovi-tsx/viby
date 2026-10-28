@@ -1,5 +1,10 @@
 # Initial modules
 
+> **Scope:** this is the current embedded-prototype module map. The target
+> engine boundary moves inference/model ownership to the user-managed local
+> service; see [engine ownership](../../README.md#engine-ownership-and-integration).
+> The configurable integration is not implemented yet.
+
 | Area | Responsibility | Not responsible for |
 |---|---|---|
 | Desktop shell | Window, tray, configuration, and lifecycle | Speech recognition or destination automation |

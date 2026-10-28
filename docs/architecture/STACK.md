@@ -1,5 +1,10 @@
 # Initial stack
 
+> **Scope:** this document describes the embedded Whisper prototype. The
+> product direction is a configurable bridge to user-managed local AI;
+> see [target architecture](../../README.md#how-it-works). The engine interface
+> and transport contract still need implementation.
+
 The application will be a Tauri 2 application with a Rust backend and a local
 web interface. It exposes no server, public API, or network traffic during
 normal use.

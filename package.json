@@ -18,7 +18,7 @@
     "typescript": "~5.6.2",
     "vite": "^6.0.3"
   },
-  "description": "Local voice dictation for Windows, powered by Whisper. No cloud, no accounts.",
+  "description": "A Windows dictation bridge for your local AI.",
   "license": "MIT",
   "repository": {
     "type": "git",
