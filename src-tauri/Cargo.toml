@@ -1,6 +1,6 @@
 [package]
 name = "viby"
-version = "0.1.0"
+version = "0.0.1"
 license = "MIT"
 repository = "https://github.com/jovi-tsx/viby"
 description = "Viby — local push-to-talk dictation for Windows"

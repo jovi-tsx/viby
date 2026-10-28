@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Versions and frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run check:version
+      - run: npm run build
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: frontend-dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 3
+
+  native:
+    name: Windows Rust checks
+    needs: frontend
+    runs-on: windows-2025
+    timeout-minutes: 30
+    env:
+      LIBCLANG_PATH: C:\Program Files\LLVM\bin
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: frontend-dist
+          path: dist/
+      - name: Select stable MSVC and Clippy
+        shell: pwsh
+        run: |
+          rustup toolchain install stable-x86_64-pc-windows-msvc --profile minimal --component clippy
+          rustup override set stable-x86_64-pc-windows-msvc
+          if (-not (Test-Path (Join-Path $env:LIBCLANG_PATH 'libclang.dll'))) {
+            throw 'libclang.dll is missing from the runner LLVM installation'
+          }
+      - name: Rust unit tests
+        run: cargo test --manifest-path src-tauri/Cargo.toml --locked --lib
+      - name: Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --locked --all-targets -- -D warnings

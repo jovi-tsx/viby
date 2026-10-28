@@ -6,6 +6,8 @@
 
 **A Windows dictation bridge for your local AI.**
 
+[![CI](https://github.com/jovi-tsx/viby/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/jovi-tsx/viby/actions/workflows/ci.yml)
+
 Viby is designed to connect the Windows desktop to a local speech-to-text
 engine that the user chooses, configures, and runs. Viby owns the interaction:
 global shortcuts, microphone capture, a compact interface, request handling,
@@ -14,7 +16,9 @@ and the planned insertion of returned text into the original application.
 The user owns the AI runtime, models, and inference setup. Engine selection
 should be configurable at runtime rather than tied to one bundled model.
 
-> **Development status:** the code currently contains an embedded Whisper
+> **Development stage: pre-alpha.** Releases use numeric SemVer only. See the
+> [changelog](CHANGELOG.md) and [release policy](RELEASING.md).
+> The code currently contains an embedded Whisper
 > prototype. Dynamic connections to user-managed local AI engines are **not
 > implemented yet**. Automatic text insertion and release packaging are also
 > unfinished. The setup instructions below document the existing prototype,
@@ -24,6 +28,8 @@ should be configurable at runtime rather than tied to one bundled model.
 
 - [What Viby is for](#what-viby-is-for)
 - [Project status](#project-status)
+- [Changelog](CHANGELOG.md)
+- [Versioning and releases](RELEASING.md)
 - [Roadmap and release gates](ROADMAP.md)
 - [How it works](#how-it-works)
 - [Engine ownership and integration](#engine-ownership-and-integration)
@@ -454,6 +460,10 @@ safe, preserve unrelated clipboard contents, and keep Enter opt-in.
 ## Verification
 
 ### Frontend — WSL
+
+CI checks version/changelog consistency and the frontend on Linux, then runs
+hardware-free Rust tests and Clippy on Windows. UI and spoken checks require
+separate native evidence.
 
 ```sh
 npm ci

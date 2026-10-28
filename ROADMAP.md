@@ -14,6 +14,7 @@ still needs technical review before implementation.
 | Area | Status |
 | --- | --- |
 | Public GitHub source, MIT license, final logo and setup documentation | Available |
+| Changelog, numeric version policy and CI checks | Available; pre-alpha source snapshots |
 | Native Windows shell, tray, Options and saved preferences | Implemented |
 | Global shortcuts, capture, level feedback and provisional preview | Implemented; complete native regression evidence still pending |
 | Embedded Whisper transcription | Implemented in the current prototype |
@@ -27,8 +28,10 @@ Recorded verification on 2026-10-28: frontend build, Windows executable build,
 prototype. They do not establish that the new engine bridge, destination
 insertion or a clean-machine installation already works.
 
-The repository is public. A usable, packaged application release has not been
-published.
+The repository is public. Development releases are source-only pre-alpha
+snapshots using numeric SemVer. A usable, packaged Windows application release
+has not been published. See [CHANGELOG.md](CHANGELOG.md) and
+[RELEASING.md](RELEASING.md).
 
 ## Next step: review the local-engine boundary
 

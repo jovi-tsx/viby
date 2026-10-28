@@ -50,3 +50,17 @@ Remove personal text, model paths, and desktop details from reports.
 
 The project uses the [MIT License](LICENSE). Third-party code and model files
 remain subject to their own license terms.
+
+## Changelog and release preparation
+
+Add noteworthy completed changes to `CHANGELOG.md` under `Unreleased`, using
+the appropriate change group. Keep planned work in `ROADMAP.md`. Ordinary
+changes do not require an immediate version bump.
+
+Run `npm run check:version` before submitting changes. Release preparation uses
+`npm run version:set -- X.Y.Z` to keep all manifests/lockfiles aligned and adds
+a dated changelog section. Versions have no suffixes; maturity is a separate
+label. Follow [RELEASING.md](RELEASING.md) before creating a tag or release.
+
+CI covers metadata, frontend, Windows Rust unit tests and Clippy; passing it
+does not claim completion of native microphone/UI/insertion validation.
