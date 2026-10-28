@@ -1,0 +1,7 @@
+* text=auto
+*.svg text eol=lf
+*.ai binary
+*.pdf binary
+*.png binary
+*.ico binary
+*.icns binary

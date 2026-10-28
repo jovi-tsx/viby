@@ -1,0 +1,46 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+graphify-out/
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Machine-local agent context, execution history and private evidence
+/AGENTS.md
+/docs/agents/
+/docs/plans/
+/docs/prds/
+
+# Local settings and model/audio data (never part of the source distribution)
+.env
+.env.*
+!.env.example
+/models/
+*.bin
+*.gguf
+*.ggml
+*.safetensors
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.pcm

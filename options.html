@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/assets/branding/viby-icon.svg" />
+    <link rel="stylesheet" href="/src/styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Viby — Options</title>
+    <script type="module" src="/src/options.ts" defer></script>
+  </head>
+
+  <body>
+    <main class="app">
+      <header class="brand">
+        <img id="brand-logo" alt="" width="28" height="28" />
+        <div class="brand-copy">
+          <h1>Viby</h1>
+          <p class="muted">Local dictation — Options</p>
+        </div>
+      </header>
+
+      <form id="options-form" aria-busy="true">
+        <fieldset class="card">
+          <legend>Activation</legend>
+          <label for="shortcut">Dictation shortcut</label>
+          <input
+            id="shortcut"
+            name="shortcut"
+            type="text"
+            autocomplete="off"
+            aria-describedby="shortcut-hint shortcut-error"
+            disabled
+          />
+          <p id="shortcut-hint" class="muted">
+            Modifier plus key, e.g. Ctrl+Shift+Space. Hold to talk; with
+            "Confirm before inserting" on, press once to start and once to
+            end instead. A shortcut already taken by another application is
+            rejected and the previous one stays active.
+          </p>
+          <p id="shortcut-error" class="error" role="alert"></p>
+
+          <label for="discard-shortcut">Discard shortcut</label>
+          <input
+            id="discard-shortcut"
+            name="discard-shortcut"
+            type="text"
+            autocomplete="off"
+            aria-describedby="discard-shortcut-hint discard-shortcut-error"
+            disabled
+          />
+          <p id="discard-shortcut-hint" class="muted">
+            Discards a transcript waiting for confirmation. Only consulted
+            while one is waiting, and must differ from the dictation
+            shortcut.
+          </p>
+          <p id="discard-shortcut-error" class="error" role="alert"></p>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Audio</legend>
+          <label for="microphone">Input device</label>
+          <select id="microphone" name="microphone" disabled>
+            <option value="">System default</option>
+          </select>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Model and language</legend>
+          <label for="model-variant">Model</label>
+          <select id="model-variant" name="model-variant" disabled>
+            <option value="base">base (faster)</option>
+            <option value="small">small (more accurate)</option>
+          </select>
+          <label for="model-path">Local model path</label>
+          <input
+            id="model-path"
+            name="model-path"
+            type="text"
+            autocomplete="off"
+            aria-describedby="model-state model-path-error"
+            placeholder="C:\Models\ggml-base.bin"
+            disabled
+          />
+          <p id="model-path-error" class="error" role="alert"></p>
+          <label for="model-language">Language</label>
+          <input
+            id="model-language"
+            name="model-language"
+            type="text"
+            autocomplete="off"
+            aria-describedby="model-state"
+            disabled
+          />
+          <p id="model-state" class="muted">Model state: …</p>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Insertion</legend>
+          <label class="checkbox">
+            <input id="send-enter" name="send-enter" type="checkbox" disabled />
+            Send Enter after pasting (off by default)
+          </label>
+          <label class="checkbox">
+            <input id="confirm-insert" name="confirm-insert" type="checkbox" disabled />
+            Confirm before inserting — the bar holds the transcript until you
+            accept it (off by default; releasing the shortcut sends it)
+          </label>
+        </fieldset>
+
+        <fieldset class="card">
+          <legend>Interface</legend>
+          <label for="bar-position">Bar position</label>
+          <select
+            id="bar-position"
+            name="bar-position"
+            aria-describedby="bar-position-error"
+            disabled
+          >
+            <option value="left">Bottom left</option>
+            <option value="center">Bottom center (default)</option>
+            <option value="right">Bottom right</option>
+          </select>
+          <p id="bar-position-error" class="error" role="alert"></p>
+          <label class="checkbox">
+            <input id="show-preview" name="show-preview" type="checkbox" disabled />
+            Show a provisional preview while speaking
+          </label>
+          <p class="muted">Reduced motion follows the Windows setting.</p>
+        </fieldset>
+
+        <div class="footer">
+          <p id="save-state" class="status" role="status" aria-live="polite">
+            Loading settings…
+          </p>
+          <button id="save" type="submit" disabled>Save</button>
+        </div>
+      </form>
+    </main>
+  </body>
+</html>

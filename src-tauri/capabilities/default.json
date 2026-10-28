@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Capability for the bar and options windows",
+  "windows": ["main", "options"],
+  "permissions": ["core:default"]
+}

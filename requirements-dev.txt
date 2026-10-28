@@ -1,0 +1,3 @@
+# https://graphify.com/ — local knowledge graph for the codebase
+# Keep the CLI available for `graphify update .` and graph queries.
+graphifyy==0.9.25
