@@ -24,6 +24,7 @@ should be configurable at runtime rather than tied to one bundled model.
 
 - [What Viby is for](#what-viby-is-for)
 - [Project status](#project-status)
+- [Roadmap and release gates](ROADMAP.md)
 - [How it works](#how-it-works)
 - [Engine ownership and integration](#engine-ownership-and-integration)
 - [Requirements](#requirements)
@@ -67,6 +68,9 @@ pipeline. It still performs inference through an embedded Whisper adapter.
 | Automatic paste into the original destination | Planned |
 | Clipboard preservation and optional Enter delivery | Planned with insertion; settings already exist |
 | Installers, distribution, and final end-to-end validation | Planned |
+
+See [ROADMAP.md](ROADMAP.md) for the next implementation steps and the gates
+for the first usable Windows release.
 
 The Options window already includes insertion preferences. Accepting a
 finished take currently resolves the confirmation state without pasting or
