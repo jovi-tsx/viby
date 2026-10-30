@@ -142,8 +142,8 @@ function render(state: string, message?: string | null) {
       // The one state that must be printed as well as announced: nothing on
       // screen would otherwise say why the dock is waiting.
       noticeText.hidden = false;
-      noticeText.textContent = "Ready to insert";
-      announce(stateText, "Ready to insert. Accept or discard.");
+      noticeText.textContent = "Ready to finish";
+      announce(stateText, "Ready to finish. Accept or discard.");
       break;
     case "error":
       // Meaning never rests on colour alone, and the message is assertive

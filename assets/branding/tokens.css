@@ -1,0 +1,31 @@
+/* Canonical Viby presentation tokens. Font files are bundled, never fetched. */
+@font-face {
+  font-family: "Manrope";
+  src: url("../fonts/manrope/Manrope-Variable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+:root {
+  --green: #1ddd66;
+  --accent: var(--green);
+  --accent-hover: #42e581;
+  --ink: #111713;
+  --canvas: #0f1411;
+  --card: #19211c;
+  --border: #2e3b32;
+  --control-border: #64756a;
+  --text: #f4f7f2;
+  --muted: #aebbb0;
+  --green-ink: #136d3a;
+  --error: #ff9b91;
+  --paper-muted: #425247;
+  --paper-border: #bcc7bd;
+  --dock-surface: #19211cec;
+  --dock-label: #19211cd9;
+  --font-sans: "Manrope", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Code", Consolas, monospace;
+  --radius-card: 16px;
+  --radius-control: 10px;
+}

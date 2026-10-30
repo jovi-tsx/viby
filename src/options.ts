@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import logoUrl from "../assets/branding/viby-icon.svg";
+import logoUrl from "../assets/branding/viby-lockup-light.svg";
 
 type ModelState =
   | { state: "missing" }

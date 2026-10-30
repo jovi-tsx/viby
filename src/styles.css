@@ -1,14 +1,10 @@
+@import url("../assets/branding/tokens.css");
+
 :root {
   color-scheme: dark;
-  --canvas: #09090b;
-  --card: #18181b;
-  --border: #27272a;
-  --text: #fafafa;
-  --muted: #a1a1aa;
-  --accent: #1ddd66;
-  --accent-hover: #42e581;
-  --error: #f87171;
-  font-family: system-ui, "Segoe UI", sans-serif;
+  font-family: var(--font-sans);
+  font-weight: 450;
+  line-height: 1.55;
   background: var(--canvas);
   color: var(--text);
 }
@@ -28,8 +24,9 @@ body {
 .app {
   width: 100%;
   max-width: 34rem;
+  font-size: 14px;
   margin: 0 auto;
-  padding: 1.25rem 1.25rem 0;
+  padding: 1.75rem 1.5rem 0;
   box-sizing: border-box;
 }
 
@@ -37,13 +34,13 @@ body {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.25rem 0 1.25rem;
+  padding: 0 0 1.75rem;
 }
 
 .brand img {
   display: block;
-  width: 28px;
-  height: 28px;
+  width: 156px;
+  height: auto;
 }
 
 .brand h1 {
@@ -53,24 +50,24 @@ body {
 }
 
 .brand .muted {
-  margin: 0.125rem 0 0;
+  margin: 0.5rem 0 0;
 }
 
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 0.75rem;
-  padding: 0.875rem 1rem 1rem;
+  border-radius: var(--radius-card);
+  padding: 1rem 1.125rem 1.125rem;
   margin: 0 0 0.875rem;
 }
 
-form[aria-busy="true"] .card {
-  opacity: 0.6;
+form[aria-busy="true"] {
+  cursor: progress;
 }
 
 legend {
   padding: 0 0.25rem;
-  font-weight: 600;
+  font-weight: 650;
   font-size: 0.9rem;
 }
 
@@ -101,9 +98,9 @@ select {
   box-sizing: border-box;
   height: 2.5rem;
   padding: 0 0.75rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--border);
-  background: transparent;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--control-border);
+  background: var(--canvas);
   color: inherit;
   font: inherit;
 }
@@ -163,10 +160,10 @@ button:focus-visible {
 button {
   height: 2.5rem;
   padding: 0 1.25rem;
-  border-radius: 0.5rem;
+  border-radius: var(--radius-control);
   border: none;
   background: var(--accent);
-  color: #09090b;
+  color: var(--ink);
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -235,7 +232,7 @@ button.circle {
   padding: 0;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: #18181bec;
+  background: var(--dock-surface);
   color: var(--text);
   /* Tight and close: a wide shadow bleeds past the window box and gets
      clipped at its edges. */
@@ -253,14 +250,14 @@ button.circle svg {
 }
 
 button.circle.cancel:not(:disabled):hover {
-  background: #18181bec;
+  background: var(--dock-surface);
   /* 2 px reads as intent; 1 px serrated against the glyph. */
   border: 2px solid var(--error);
   color: var(--error);
 }
 
 button.circle.accept:not(:disabled):hover {
-  background: #18181bec;
+  background: var(--dock-surface);
   border-color: var(--accent);
   color: var(--accent);
 }
@@ -273,7 +270,7 @@ button.circle.accept:not(:disabled):hover {
   height: 3rem;
   border: 1px solid var(--border);
   border-radius: 999px;
-  background: #18181bec;
+  background: var(--dock-surface);
   box-shadow: 0 1px 3px #00000080;
 }
 
@@ -342,8 +339,8 @@ button.circle.accept:not(:disabled):hover {
   max-width: 100%;
   margin: 0;
   padding: 0.125rem 0.5rem;
-  border-radius: 0.5rem;
-  background: #18181bd9;
+  border-radius: var(--radius-control);
+  background: var(--dock-label);
   font-weight: 600;
 }
 
@@ -472,4 +469,16 @@ button.circle.accept:not(:disabled):hover {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* Paths and key chords remain distinct from ordinary help text. */
+#shortcut, #discard-shortcut, #model-path {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+}
+
+@media (max-width: 400px) {
+  .app { padding: 1.25rem 1rem 0; }
+  .card { padding: 0.875rem; }
+  .footer { gap: 0.75rem; }
 }

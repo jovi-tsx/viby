@@ -12,10 +12,9 @@
   <body>
     <main class="app">
       <header class="brand">
-        <img id="brand-logo" alt="" width="28" height="28" />
         <div class="brand-copy">
-          <h1>Viby</h1>
-          <p class="muted">Local dictation — Options</p>
+          <h1><img id="brand-logo" alt="Viby" width="156" height="52" /></h1>
+          <p class="muted">Your dictation settings</p>
         </div>
       </header>
 
@@ -96,14 +95,15 @@
 
         <fieldset class="card">
           <legend>Insertion</legend>
+          <p class="muted">Text insertion is planned. These preferences are saved, but the current prototype does not paste text.</p>
           <label class="checkbox">
             <input id="send-enter" name="send-enter" type="checkbox" disabled />
             Send Enter after pasting (off by default)
           </label>
           <label class="checkbox">
             <input id="confirm-insert" name="confirm-insert" type="checkbox" disabled />
-            Confirm before inserting — the bar holds the transcript until you
-            accept it (off by default; releasing the shortcut sends it)
+            Confirm before inserting — require accept or discard after each
+            take (off by default)
           </label>
         </fieldset>
 
@@ -132,7 +132,7 @@
           <p id="save-state" class="status" role="status" aria-live="polite">
             Loading settings…
           </p>
-          <button id="save" type="submit" disabled>Save</button>
+          <button id="save" type="submit" disabled>Save changes</button>
         </div>
       </form>
     </main>

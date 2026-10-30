@@ -7,7 +7,21 @@ numeric `MAJOR.MINOR.PATCH`, without suffixes. Maturity is a separate label.
 
 ## [Unreleased]
 
-No unreleased changes.
+### Added
+
+- A complete Viby brand guide, visual sheet and downloadable vector/raster kit,
+  including outlined signatures, monochrome applications, avatar and repository covers.
+- Locally bundled Manrope typography with its upstream license and source record.
+
+### Changed
+
+- Applied shared brand tokens, typography and the final signature to Options and
+  the dictation dock; refreshed the repository cover.
+- Clarified that the current prototype does not paste text, including in the
+  confirmation copy and insertion settings.
+
+The app remains pre-alpha. This identity update does not implement dynamic
+engine connections or destination insertion.
 
 ## [0.0.1] - 2026-10-28
 

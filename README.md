@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/branding/viby-icon.svg" width="112" height="112" alt="Viby logo" />
+  <img src="assets/branding/viby-github-banner.png" width="100%" alt="Viby — Your voice. Your words. Local dictation for Windows." />
 </p>
 
 # Viby
@@ -33,6 +33,7 @@ should be configurable at runtime rather than tied to one bundled model.
 - [Roadmap and release gates](ROADMAP.md)
 - [How it works](#how-it-works)
 - [Engine ownership and integration](#engine-ownership-and-integration)
+- [Brand and identity](#brand-and-identity)
 - [Requirements](#requirements)
 - [Set up the project](#set-up-the-project)
 - [Run in development](#run-in-development)
@@ -134,6 +135,15 @@ The transport, capability negotiation, and provider configuration have not
 been implemented. The current Options window selects a local Whisper file;
 it does not yet offer an endpoint/provider selector. The documentation does
 not claim that arbitrary AI runtimes can already be connected.
+
+## Brand and identity
+
+Viby is minimalist and welcoming: the approved waveform V and typing cursor,
+a clear voice and a locally bundled typeface. See the
+[brand guide](assets/branding/brand-guide.md), browse the
+[visual brand sheet](assets/branding/brand-sheet.html), or
+[download the SVG/PNG/source kit](assets/branding/viby-brand-kit.zip).
+The final icon remains the source for all platform sizes.
 
 ## Requirements
 
@@ -412,7 +422,8 @@ The flow controller owns activation, cancellation, confirmation, and worker
 coordination. The UI receives state/events and requests explicit actions.
 
 ```text
-assets/branding/           Final SVG, PNG, Illustrator source, and preview
+assets/branding/           Brand guide, tokens, SVG/PNG kit, Illustrator source
+assets/fonts/manrope/      Bundled typeface, original source and license
 src/main.ts                Dock rendering and flow events
 src/options.ts             Preferences UI and native command calls
 src/styles.css             Shared visual tokens and styles
@@ -527,9 +538,11 @@ incomplete.
 
 ### Branding
 
-The [SVG master](assets/branding/viby-icon.svg) supplies Options, favicons, and
-generated app/tray icons. The editable
-[Illustrator source](assets/branding/viby-icon.ai) is included.
+The [SVG master](assets/branding/viby-icon.svg) supplies favicons, generated
+app/tray icons and the symbol inside the outlined Options signature. The editable
+[Illustrator source](assets/branding/viby-icon.ai) is included. The
+[brand kit documentation](assets/branding/README.md) covers signature/font
+exports and their reproducible generator.
 
 After changing the SVG, run in WSL:
 

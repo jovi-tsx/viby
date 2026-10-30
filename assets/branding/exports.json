@@ -1,0 +1,42 @@
+{
+  "source_icon_sha256": "f6e06e960f7e7cea9bba2dbce1caded6971c13ed3363c9122b26d18e6aeafc48",
+  "font_source_sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
+  "colors": {
+    "green": "#1DDD66",
+    "hover": "#42E581",
+    "ink": "#111713",
+    "canvas": "#0F1411",
+    "surface": "#19211C",
+    "border": "#2E3B32",
+    "control": "#64756A",
+    "paper": "#F4F7F2",
+    "muted": "#AEBBB0",
+    "deep": "#136D3A",
+    "error": "#FF9B91"
+  },
+  "files": {
+    "viby-avatar.png": "c5397ccb99d949453a1eada02bff8d0fb75947a87fb938cf145bbf6e3762aef3",
+    "viby-avatar.svg": "3bbb7bd28fe13f32c6ee0ec947d1a9a197b0e369adf1a480e142cd26bbcece2c",
+    "viby-github-banner.png": "564e66235b935d2336ea12460213fb6219760967dc581c7898ad581a11e96a23",
+    "viby-github-banner.svg": "1b0e2e63c3816b2d4a03f180efd2c5caed87c7d34434b3895fd469d9399901c6",
+    "viby-icon-512.png": "2d00200b7bf4a8b5e27c9a58e7ed58f27c8894a25473789279d83a5654104fa6",
+    "viby-icon-mono-ink.png": "12bf7e9125e448241ecda7db5a0163264bf6e4278e72e89b1f9cc9d8c67bae68",
+    "viby-icon-mono-ink.svg": "0ff2e7eba5505f1712f662c9a055ee00144e35bb94656f66a4ab24d4d9b5495f",
+    "viby-icon-mono-light.png": "c94628f4ecbab1dd3499198754aeb328b5f8b89a12c921aaa859e29548b96787",
+    "viby-icon-mono-light.svg": "96dff65c889538369be88f0a0ca17b52fb69e4bb6eb83c509499933f7a6ca806",
+    "viby-lockup-ink.png": "e88533d03cb41d2996b4b122ba6f660f1586508b617d366964d8e3e6ee017826",
+    "viby-lockup-ink.svg": "15965481490c22624e8c6b6882a86f2a54a9156a1df5f9133616e0477d2bf641",
+    "viby-lockup-light.png": "ca1a3e62606f9c079b388a10d8cb963cd43bb9f28da5b69755d28ea22a47879a",
+    "viby-lockup-light.svg": "67aa8c693c353bf1c8cbdda2d9fca4b193c7b622f39294156566461f8212b356",
+    "viby-lockup-mono-ink.png": "5a64724844f61ef484882fb17d0bd4ac26098f7dcda2fae33059d3ee7e4111dc",
+    "viby-lockup-mono-ink.svg": "b5a530600b4a9da786ac47b8fc0b12e80345f38ca928b9d7bd2eecda92dd319d",
+    "viby-lockup-mono-light.png": "df1645251d25c61109719ec5ff7a5a8702970e57b2393f043686c4a99fb6a6d6",
+    "viby-lockup-mono-light.svg": "6ddf468bf3e12095b720408d34edc2f971843edfa00b7d99bce99cd61b9b40ac",
+    "viby-social-preview.png": "a8b533e78fe6ecd2797cf070130efc63e7e5a4717e0db37cc3d002e2f333148d",
+    "viby-social-preview.svg": "04207450090383b62170f829c5e509d6955ae76fd67e27c7ce04777de20774ac",
+    "viby-wordmark-ink.png": "08601beabb9ca5da2dbedf53b1d1d06d8d1e2994f5e3f534d1cf97f20346363a",
+    "viby-wordmark-ink.svg": "877ae01e95c0dd84edba10c904488c7669e74fdbeb2122c08c499d4ff1f64f84",
+    "viby-wordmark-light.png": "efa7d7cae7cdcc93776f0a8288dc40b8032196d548baa4209127bf4abca6a708",
+    "viby-wordmark-light.svg": "97b8df3915693fd7b4e8fe87c8dbc5e491333ed82f5eb071549f23e0e1501593"
+  }
+}

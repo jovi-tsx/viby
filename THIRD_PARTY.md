@@ -20,3 +20,13 @@ before redistributing a compiled bundle.
 
 Whisper model weights are not included or downloaded automatically. Supply a
 compatible model separately and retain the terms accompanying that model.
+
+## Bundled font
+
+[Manrope](https://github.com/googlefonts/manrope), copyright 2018 The Manrope
+Project Authors, is bundled locally as an original variable TTF and WOFF2
+conversion under the SIL Open Font License 1.1. The complete
+[license](assets/fonts/manrope/OFL.txt) and
+[pinned source record](assets/fonts/manrope/SOURCE.md) accompany both files.
+The application never requests fonts from a remote service. The repository's
+MIT license does not replace this font license.
