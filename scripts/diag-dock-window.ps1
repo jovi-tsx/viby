@@ -6,7 +6,7 @@
 # in 1462 ms against a 6 s clock, which cannot be the cause. This script does
 # not judge anything - it enumerates every top-level window the Viby process
 # owns, before and after the shortcut, and prints what `FindWindowW` sees.
-param([string]$ModelPath = "C:\viby-no-such-model.bin")
+param([string]$Endpoint = "http://127.0.0.1:8080/inference")
 $ErrorActionPreference = "Stop"
 
 $repo = Split-Path $PSScriptRoot -Parent
@@ -87,7 +87,8 @@ $backup = [System.IO.File]::ReadAllBytes($storeFile)
 $viby = $null
 try {
     $prefs = Get-Content $storeFile -Raw | ConvertFrom-Json
-    $prefs.preferences.model.path = $ModelPath
+    . (Join-Path $PSScriptRoot "lib-engine.ps1")
+    Set-EnginePrefs $prefs.preferences $Endpoint
     $prefs.preferences.shortcut = "Ctrl+Shift+Space"
     $prefs.preferences.microphone = $null
     $prefs.preferences.insertion | Add-Member -NotePropertyName confirm_before_insert `

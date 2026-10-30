@@ -6,13 +6,17 @@
 # character count, the elapsed final-inference time, and whether the webview
 # event was delivered; recognized text is never logged (R5 zero retention).
 #
-# Usage from WSL, once per model under measurement:
+# Usage from WSL, against the user's running engine (D23):
 #   powershell.exe -ExecutionPolicy Bypass -File scripts\smoke-final-result.ps1 `
-#       -ModelPath C:\openai-whisper\ggml-base-q5_1.bin -Variant base-q5_1
+#       [-Endpoint http://127.0.0.1:8080/inference] [-StartEngine]
 
 param(
-    [Parameter(Mandatory = $true)][string]$ModelPath,
-    [Parameter(Mandatory = $true)][string]$Variant,
+    # The user's engine (D23). It must already be running, unless
+    # -StartEngine is given: the user authorized that for M2b proof runs only.
+    [string]$Endpoint = "http://127.0.0.1:8080/inference",
+    [switch]$StartEngine,
+    [string]$EngineExe = "C:\openai-whisper\whisper-bin-x64-v1.9.2\Release\whisper-server.exe",
+    [string]$EngineModel = "C:\openai-whisper\ggml-base-q5_1.bin",
     [int]$ProcessingTimeoutSeconds = 180
 )
 
@@ -25,8 +29,9 @@ $storeExisted = Test-Path $storeFile
 $storeBackup = if ($storeExisted) { [System.IO.File]::ReadAllBytes($storeFile) } else { $null }
 $logFile = Join-Path $env:TEMP "viby-final-trace.log"
 $errFile = Join-Path $env:TEMP "viby-final-trace.err"
+. (Join-Path $PSScriptRoot "lib-engine.ps1")
+$engineProcess = $null
 
-if (-not (Test-Path $ModelPath)) { throw "model file not found: $ModelPath" }
 if (-not (Test-Path $exe)) { throw "release executable not found: $exe (run cargo tauri build)" }
 
 function Get-CleanLog {
@@ -61,9 +66,10 @@ try {
     }
     if (-not $storeExisted) { throw "no preferences store at $storeFile; run Viby once first" }
 
+    if ($StartEngine) { $engineProcess = Start-ProofEngine $Endpoint $EngineExe $EngineModel }
+    if (-not (Test-EngineListening $Endpoint)) { throw "no engine listens on $Endpoint; start it or pass -StartEngine" }
     $prefs = Get-Content $storeFile -Raw | ConvertFrom-Json
-    $prefs.preferences.model.path = $ModelPath
-    $prefs.preferences.model.variant = $Variant
+    Set-EnginePrefs $prefs.preferences $Endpoint
     $prefs.preferences.shortcut = "Ctrl+Shift+Space"
     # serde_json rejects a BOM; write strict UTF-8
     [System.IO.File]::WriteAllText($storeFile, ($prefs | ConvertTo-Json -Depth 8),
@@ -78,7 +84,7 @@ try {
     $viby = Get-Process viby -ErrorAction SilentlyContinue | Select-Object -First 1
     if (-not $viby) { throw "viby.exe did not start" }
 
-    Write-Output "model: $Variant ($ModelPath)"
+    Write-Output "engine: $Endpoint"
     Write-Output ""
     Write-Output "OPERATOR: hold Ctrl+Shift+Space, speak the reference sentence,"
     Write-Output "          then release. Do not close this window."
@@ -95,9 +101,8 @@ try {
     }
     if (-not $finalLine) { throw "no final result within $ProcessingTimeoutSeconds s" }
 
-    $connections = Get-NetTCPConnection -OwningProcess $viby.Id -ErrorAction SilentlyContinue
-    if ($connections) { throw "viby.exe held TCP connections during the flow" }
-    Write-Output "network-observation: NO TCP CONNECTIONS"
+    $count = Assert-EngineOnlyConnections $viby.Id $Endpoint "final run"
+    Write-Output "network-observation: ENGINE ONLY ($count connection(s) to $Endpoint)"
 
     # The Idle transition after the final proves the flow returned to rest.
     Start-Sleep -Seconds 2
@@ -118,9 +123,10 @@ try {
 
     Write-Output "FINAL_CHARS=$chars"
     Write-Output ("FINAL_SECONDS={0:N2}" -f $seconds)
-    Write-Output "final-result-delivered: PASS ($Variant)"
+    Write-Output "final-result-delivered: PASS ($Endpoint)"
     Write-Output "`nSMOKE PASS"
 } finally {
+    Stop-ProofEngine $engineProcess
     if ($viby -and -not $viby.HasExited) {
         Stop-Process -Id $viby.Id -Force -ErrorAction SilentlyContinue
         $viby.WaitForExit(5000) | Out-Null

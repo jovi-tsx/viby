@@ -7,8 +7,9 @@ their notices.
 The principal components are:
 
 - [Tauri](https://github.com/tauri-apps/tauri), plus its store and global-shortcut plugins.
-- [whisper-rs](https://github.com/tazz4843/whisper-rs), including its
-  [whisper.cpp](https://github.com/ggml-org/whisper.cpp) native dependency.
+- [reqwest](https://github.com/seanmonstar/reqwest) with
+  [rustls](https://github.com/rustls/rustls) and [ring](https://github.com/briansmith/ring)
+  for the request to the user's engine, and [Tokio](https://github.com/tokio-rs/tokio).
 - [CPAL](https://github.com/RustAudio/cpal) for Windows audio capture.
 - [windows-rs](https://github.com/microsoft/windows-rs) for Win32 bindings.
 - [Vite](https://github.com/vitejs/vite) and
@@ -18,8 +19,8 @@ Exact source dependency versions are recorded in `src-tauri/Cargo.lock` and
 `package-lock.json`. Consult each installed package's license and notices
 before redistributing a compiled bundle.
 
-Whisper model weights are not included or downloaded automatically. Supply a
-compatible model separately and retain the terms accompanying that model.
+No speech-to-text engine or model is included or downloaded. The engine you
+run, and its model, keep their own licenses and terms.
 
 ## Bundled font
 

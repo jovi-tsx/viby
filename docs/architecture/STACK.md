@@ -1,7 +1,6 @@
 # Initial stack
 
-> **Scope:** target stack after milestone M2b ([ADR 0002](../adrs/0002-user-managed-local-engine.md)).
-> Until M2b lands, the code still embeds whisper.cpp through `whisper-rs`.
+> Rationale: [ADR 0002](../adrs/0002-user-managed-local-engine.md).
 
 The application is a Tauri 2 application with a Rust backend and a local web
 interface. It exposes no server or public API. Its only connections are

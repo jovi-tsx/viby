@@ -1,12 +1,8 @@
 import { invoke } from "@tauri-apps/api/core";
 import logoUrl from "../assets/branding/viby-lockup-light.svg";
 
-type ModelState =
-  | { state: "missing" }
-  | { state: "present"; path: string };
-
 type Status = {
-  model: ModelState;
+  engine_configured: boolean;
   microphone: string | null;
   shortcut: string;
   shortcut_error: string | null;
@@ -18,7 +14,8 @@ type Preferences = {
   shortcut: string;
   discard_shortcut: string;
   microphone: string | null;
-  model: { variant: string; language: string; path: string | null };
+  engine: { endpoint: string; allow_local_network: boolean };
+  model: { language: string; name: string };
   insertion: { send_enter: boolean; confirm_before_insert: boolean };
   interface: { show_preview: boolean; bar_position: string };
 };
@@ -45,7 +42,7 @@ const saveButton = field<HTMLButtonElement>("save");
 const statusEl = field<HTMLParagraphElement>("save-state");
 const errorEl = field<HTMLParagraphElement>("shortcut-error");
 const discardErrorEl = field<HTMLParagraphElement>("discard-shortcut-error");
-const modelPathErrorEl = field<HTMLParagraphElement>("model-path-error");
+const endpointErrorEl = field<HTMLParagraphElement>("engine-endpoint-error");
 const barPositionErrorEl = field<HTMLParagraphElement>("bar-position-error");
 const shortcutInput = field<HTMLInputElement>("shortcut");
 const discardShortcutInput = field<HTMLInputElement>("discard-shortcut");
@@ -66,13 +63,13 @@ function setControlsEnabled(enabled: boolean) {
   saveButton.disabled = true; // Save is re-enabled only by an edit (dirty).
 }
 function clearFieldErrors() {
-  for (const error of [errorEl, discardErrorEl, modelPathErrorEl, barPositionErrorEl]) {
+  for (const error of [errorEl, discardErrorEl, endpointErrorEl, barPositionErrorEl]) {
     error.textContent = "";
   }
   for (const input of [
     shortcutInput,
     discardShortcutInput,
-    field<HTMLInputElement>("model-path"),
+    field<HTMLInputElement>("engine-endpoint"),
     field<HTMLSelectElement>("bar-position"),
   ]) {
     input.removeAttribute("aria-invalid");
@@ -108,13 +105,16 @@ async function load(): Promise<Status> {
     mic.add(new Option(`${prefs.microphone} (unavailable)`, prefs.microphone));
   }
   mic.value = prefs.microphone ?? "";
-  field<HTMLSelectElement>("model-variant").value = prefs.model.variant;
-  field<HTMLInputElement>("model-path").value = prefs.model.path ?? "";
+  field<HTMLInputElement>("engine-endpoint").value = prefs.engine.endpoint;
+  field<HTMLInputElement>("allow-local-network").checked =
+    prefs.engine.allow_local_network;
+  field<HTMLInputElement>("model-name").value = prefs.model.name;
   field<HTMLInputElement>("model-language").value = prefs.model.language;
-  field("model-state").textContent =
-    status.model.state === "present"
-      ? `Model state: present (${status.model.path})`
-      : "Model state: missing — dictation stays unavailable until a local model file exists.";
+  // Viby never opens this window on its own to ask for an engine; this line
+  // is where an unconfigured install says what dictation needs (R3, DESIGN).
+  field("engine-state").textContent = status.engine_configured
+    ? "Viby sends each take to the engine below. It is checked when you start dictating."
+    : "No engine set — dictation needs a speech-to-text engine you run. Enter its address below.";
 
   field<HTMLInputElement>("send-enter").checked = prefs.insertion.send_enter;
   field<HTMLInputElement>("confirm-insert").checked =
@@ -132,11 +132,15 @@ function collect(): Preferences {
     shortcut: shortcutInput.value.trim(),
     discard_shortcut: discardShortcutInput.value.trim(),
     microphone: mic === "" ? null : mic,
+    engine: {
+      endpoint: field<HTMLInputElement>("engine-endpoint").value.trim(),
+      allow_local_network: field<HTMLInputElement>("allow-local-network")
+        .checked,
+    },
     model: {
-      variant: field<HTMLSelectElement>("model-variant").value,
       language:
         field<HTMLInputElement>("model-language").value.trim() || "auto",
-      path: field<HTMLInputElement>("model-path").value.trim() || null,
+      name: field<HTMLInputElement>("model-name").value.trim(),
     },
     insertion: {
       send_enter: field<HTMLInputElement>("send-enter").checked,
@@ -189,15 +193,19 @@ window.addEventListener("DOMContentLoaded", async () => {
       }
       const e = error as {
         kind?: string;
-        field?: "shortcut" | "discard-shortcut" | "model-path" | "bar-position";
+        field?:
+          | "shortcut"
+          | "discard-shortcut"
+          | "engine-endpoint"
+          | "bar-position";
         message?: string;
       };
       if (e.kind === "conflict" || e.kind === "validation") {
         state = "conflict";
         clearFieldErrors();
         const target =
-          e.field === "model-path"
-            ? [modelPathErrorEl, field<HTMLInputElement>("model-path")]
+          e.field === "engine-endpoint"
+            ? [endpointErrorEl, field<HTMLInputElement>("engine-endpoint")]
             : e.field === "bar-position"
               ? [barPositionErrorEl, field<HTMLSelectElement>("bar-position")]
               : e.field === "discard-shortcut"

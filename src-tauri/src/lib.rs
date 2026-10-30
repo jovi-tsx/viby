@@ -1,10 +1,10 @@
 mod audio;
 mod bar;
+mod engine;
 mod flow;
 mod prefs;
 mod shortcut;
 mod status;
-mod stt;
 mod tray;
 
 use parking_lot::Mutex;
@@ -15,10 +15,12 @@ use tauri_plugin_store::StoreExt;
 
 use prefs::{Preferences, PrefsError, STORE_FILE, STORE_KEY};
 
-/// What the interface needs to render model and microphone state (M1).
+/// What the interface needs to render engine and microphone state.
 #[derive(Serialize)]
 struct StatusDto {
-    model: status::ModelState,
+    /// Whether an engine address is saved. Reachability is checked per take,
+    /// never polled (R3).
+    engine_configured: bool,
     microphone: Option<String>,
     shortcut: String,
     shortcut_error: Option<String>,
@@ -39,7 +41,7 @@ struct PreferencesState {
 fn get_status(app: AppHandle) -> StatusDto {
     let state = app.state::<Mutex<PreferencesState>>().lock().clone();
     StatusDto {
-        model: status::detect_model(&state.prefs.model),
+        engine_configured: !state.prefs.engine.endpoint.trim().is_empty(),
         microphone: status::configured_microphone(state.prefs.microphone.as_deref()),
         shortcut: state.prefs.shortcut,
         shortcut_error: state.shortcut_error,
@@ -66,7 +68,7 @@ fn list_microphones() -> Vec<String> {
 fn start_dictation(app: AppHandle) -> bool {
     let prefs = app.state::<Mutex<PreferencesState>>().lock().prefs.clone();
     app.state::<flow::FlowController>().start(
-        prefs.model,
+        engine::EngineConfig::from_prefs(&prefs),
         prefs.microphone,
         prefs.interface,
         prefs.insertion.confirm_before_insert,
@@ -115,7 +117,7 @@ fn on_shortcut_event(app: &AppHandle, shortcut: &Shortcut, state: ShortcutState)
                 // the worker can fail) is the single ordered activation
                 // signal; no separate event.
                 app.state::<flow::FlowController>().dictation_pressed(
-                    prefs.model,
+                    engine::EngineConfig::from_prefs(&prefs),
                     prefs.microphone,
                     prefs.interface,
                     prefs.insertion.confirm_before_insert,
@@ -179,10 +181,20 @@ impl SaveError {
 
 /// Validates and applies new preferences. Persistence commits the managed
 /// state only after the store accepts the new value.
+///
+/// Async because a non-empty engine endpoint is resolved and checked against
+/// R3a under the permission being saved; that check belongs to saving alone
+/// and never runs on load (R7).
 #[tauri::command]
-fn save_preferences(app: AppHandle, next: Preferences) -> Result<(), SaveError> {
+async fn save_preferences(app: AppHandle, next: Preferences) -> Result<(), SaveError> {
     prefs::validate_preferences_field(&next)
         .map_err(|(field, e)| SaveError::validation(field, e.to_string()))?;
+    if !next.engine.endpoint.trim().is_empty() {
+        engine::Engine::system()
+            .validate_for_save(&next.engine.endpoint, next.engine.allow_local_network)
+            .await
+            .map_err(|e| SaveError::validation("engine-endpoint", e.to_string()))?;
+    }
     let next_shortcut = shortcut::parse(&next.shortcut)
         .map_err(|e| SaveError::validation("shortcut", e.to_string()))?;
     let next_discard_shortcut = shortcut::parse(&next.discard_shortcut)

@@ -1,8 +1,6 @@
 # Initial modules
 
-> **Scope:** target module map after milestone M2b
-> ([ADR 0002](../adrs/0002-user-managed-local-engine.md)). Until then the STT
-> area is the embedded Whisper prototype.
+> Rationale: [ADR 0002](../adrs/0002-user-managed-local-engine.md).
 
 | Area | Responsibility | Not responsible for |
 |---|---|---|
@@ -25,7 +23,8 @@ Audio, engine, and insertion are internal adapters of this module. Each
 receives the dependencies it needs instead of creating them: audio provides PCM
 blocks and level, the engine adapter provides a final transcription or a
 sanitized error, and insertion receives only a validated destination and final
-text. The engine adapter may also provide previews identified by audio window; the controller publishes only the newest
-preview and discards any stale result. These internal seams enable tests without
-a microphone, engine, or real window, but do not become a large public surface
-before a second real implementation exists.
+text. The engine adapter may also provide previews identified by audio
+window; the controller shows a preview only when it is newer than the one on
+screen, and the final request never waits for a preview. These internal seams
+enable tests without a microphone, engine, or real window, but do not become a
+large public surface before a second real implementation exists.

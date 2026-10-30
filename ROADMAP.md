@@ -1,13 +1,14 @@
 # Viby roadmap
 
-Updated: 2026-10-28.
+Updated: 2026-10-30.
 
 Viby is a Windows dictation bridge for AI that the user runs locally.
 The user owns the engine, models and inference runtime; Viby owns capture,
 shortcuts, interaction and destination insertion.
 
-This roadmap records the delivery direction. The configurable engine boundary
-still needs technical review before implementation.
+This roadmap records the delivery direction. The engine boundary was reviewed
+on 2026-10-30 ([ADR 0002](docs/adrs/0002-user-managed-local-engine.md)) and
+its implementation is in progress.
 
 ## Where the application is today
 
@@ -17,53 +18,50 @@ still needs technical review before implementation.
 | Changelog, numeric version policy and CI checks | Available; pre-alpha source snapshots |
 | Native Windows shell, tray, Options and saved preferences | Implemented |
 | Global shortcuts, capture, level feedback and provisional preview | Implemented; complete native regression evidence still pending |
-| Embedded Whisper transcription | Implemented in the current prototype |
-| Dynamic connection to user-managed local AI | Not implemented |
+| Connection to a user-run local engine (OpenAI-style HTTP, address checks) | Implemented; native journey evidence pending |
+| Embedded Whisper transcription | Removed — Viby bundles no engine or model |
 | Paste into the original Windows destination | Not implemented |
 | Clipboard preservation and optional Enter delivery | Not implemented; UI preferences already exist |
 | Windows installer and published application release | Not available yet |
 
-Recorded verification on 2026-10-28: frontend build, Windows executable build,
-60 Rust unit tests and Clippy passed. These checks cover the current embedded
-prototype. They do not establish that the new engine bridge, destination
-insertion or a clean-machine installation already works.
+Recorded verification on 2026-10-30: frontend build, Windows executable build
+without LLVM, 80 Rust unit tests (including the engine bridge against local
+HTTP and HTTPS test servers) and Clippy passed, and a synthesized spoken take
+went through the production request path to a real whisper.cpp server. The
+keyboard-and-microphone journey against the engine still needs native
+evidence; destination insertion and a clean-machine installation are not done.
 
 The repository is public. Development releases are source-only pre-alpha
 snapshots using numeric SemVer. A usable, packaged Windows application release
 has not been published. See [CHANGELOG.md](CHANGELOG.md) and
 [RELEASING.md](RELEASING.md).
 
-## Next step: review the local-engine boundary
+## The engine boundary
 
-Define the integration contract before extending the runtime:
+Decided on 2026-10-30 and documented in R3/R3a of the
+[dictation spec](docs/specs/voice-dictation.md):
 
-- A compatible engine accepts audio and returns text.
-- Choose the initial local transport/protocol and its capability requirements.
-- Define connection and model selection at runtime, without recompiling Viby.
-- Define audio formats, response validation, cancellation, timeouts and errors.
-- Define the local-only connection boundary and any authentication requirements.
-- Replace embedded-model assumptions in Options, preferences and documentation.
+- One HTTP `multipart/form-data` request: the take as 16 kHz mono WAV in,
+  a JSON `text` field out — the OpenAI transcription shape, which whisper.cpp
+  server, Speaches/faster-whisper, LocalAI and vLLM speak.
+- The user enters the engine address; Viby starts and manages nothing.
+- This PC always; a private network only with an explicit, warned opt-in; the
+  internet never. No redirects, no proxies, no credentials, no fallback.
+- Bounded timeouts, abandonment on cancel/discard/Close, and a provisional
+  preview from the same endpoint.
 
 A generic text-only model needs a speech-to-text component before it can serve
-this contract. Supporting an engine depends on its interface or an adapter;
-the project does not promise compatibility with every arbitrary AI runtime.
-
-Ready to implement when the behavioral, architecture and test contracts agree
-on the engine boundary. No protocol or provider has been selected by this
-roadmap.
+this contract.
 
 ## Delivery order
 
-### 1. Configurable local-engine integration — next
+### 1. Configurable local-engine integration — in progress
 
-- Separate the Windows dictation flow from embedded Whisper inference.
-- Add the reviewed local-engine client/adapter and configuration.
-- Let the user validate the connection and select supported engine/model
-  settings through Options.
-- Preserve cancellation, disposable audio/text and actionable local errors.
-- Verify changing the configured engine without recompiling the application.
-- Retire embedded-model management and native inference dependencies when the
-  replacement is working and the migration is reviewed.
+- [x] Separate the Windows dictation flow from embedded Whisper inference.
+- [x] Add the reviewed engine client and its Options configuration.
+- [x] Preserve cancellation, disposable audio/text and actionable errors.
+- [x] Retire embedded-model management and the native inference build.
+- [ ] Native keyboard-and-microphone journey evidence against a running engine.
 
 **Exit:** a take reaches a user-operated, compatible local engine and returns
 text through the shared flow, with tested connection failures and cancellation.
@@ -118,8 +116,8 @@ instructions.
 - [x] Public source repository and MIT license.
 - [x] Final identity and source/development documentation.
 - [x] Versioned source baseline and working frontend/native builds.
-- [ ] Reviewed engine integration contract.
-- [ ] Configurable connection to a user-managed local engine.
+- [x] Reviewed engine integration contract.
+- [ ] Configurable connection to a user-managed local engine (implemented; native evidence pending).
 - [ ] Complete native interaction verification.
 - [ ] Safe destination insertion and clipboard handling.
 - [ ] Full end-to-end and privacy regression evidence.
@@ -137,5 +135,5 @@ previous non-blocking disposition preserved. The native smoke helpers also
 have maintenance work; their failures must not be described as successful
 end-to-end validation.
 
-See [README.md](README.md) for the current prototype's setup and limitations,
+See [README.md](README.md) for setup and current limitations,
 and [CONTRIBUTING.md](CONTRIBUTING.md) for the development workflow.

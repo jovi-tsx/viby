@@ -21,16 +21,22 @@
 #
 # Run from WSL:
 #   powershell.exe -ExecutionPolicy Bypass -File scripts\smoke-keyboard.ps1 `
-#       -ModelPath C:\openai-whisper\ggml-base-q5_1.bin
+#       [-Endpoint http://127.0.0.1:8080/inference] [-StartEngine]
 
 param(
-    [string]$ModelPath = "C:\openai-whisper\ggml-base-q5_1.bin",
-    [string]$Variant = "base-q5_1"
+    # The user's engine (D23). It must already be running, unless
+    # -StartEngine is given: the user authorized that for M2b proof runs only.
+    [string]$Endpoint = "http://127.0.0.1:8080/inference",
+    [switch]$StartEngine,
+    [string]$EngineExe = "C:\openai-whisper\whisper-bin-x64-v1.9.2\Release\whisper-server.exe",
+    [string]$EngineModel = "C:\openai-whisper\ggml-base-q5_1.bin"
 )
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, System.Windows.Forms
 . (Join-Path $PSScriptRoot "lib-tray.ps1")
+. (Join-Path $PSScriptRoot "lib-engine.ps1")
+$engineProcess = $null
 
 $AE = [System.Windows.Automation.AutomationElement]
 $CT = [System.Windows.Automation.ControlType]
@@ -304,7 +310,8 @@ function Get-StoredPrefs { (Get-Content $storeFile -Raw | ConvertFrom-Json).pref
 
 try {
     if (-not (Test-Path $exe)) { throw "release executable not found: $exe (run cargo tauri build)" }
-    if (-not (Test-Path $ModelPath)) { throw "model file not found: $ModelPath" }
+    if ($StartEngine) { $engineProcess = Start-ProofEngine $Endpoint $EngineExe $EngineModel }
+    if (-not (Test-EngineListening $Endpoint)) { throw "no engine listens on $Endpoint; start it or pass -StartEngine" }
     Note ("foreground-at-start: " + (Get-ForegroundInfo))
     Note "microphone-record: $micKey"
 
@@ -473,6 +480,7 @@ try {
 
     Note "`nSMOKE PASS"
 } finally {
+    Stop-ProofEngine $engineProcess
     Stop-Viby
     if ($storeExisted) { [System.IO.File]::WriteAllBytes($storeFile, $storeBackup) }
     Remove-Item (Join-Path (Split-Path $storeFile) "preferences.bak") -Force -ErrorAction SilentlyContinue

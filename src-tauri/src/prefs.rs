@@ -8,8 +8,8 @@ use thiserror::Error;
 pub const STORE_FILE: &str = "preferences.json";
 pub const STORE_KEY: &str = "preferences";
 pub const DEFAULT_SHORTCUT: &str = "Ctrl+Shift+Space";
-/// Resolves a transcript waiting for confirmation (D16); only ever consulted
-/// while `FlowState::Confirming` holds.
+/// Discards a transcript waiting for confirmation (D16) or cancels a take the
+/// engine is still processing (R4); consulted only in those two states.
 pub const DEFAULT_DISCARD_SHORTCUT: &str = "Ctrl+Shift+Backspace";
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -18,25 +18,38 @@ pub struct Preferences {
     /// The dictation shortcut. Hold-to-talk when `confirm_before_insert` is
     /// off; press-once when it is on (D16).
     pub shortcut: String,
-    /// Discards a transcript waiting for confirmation; consulted only while
-    /// `FlowState::Confirming` holds (D16, R7).
+    /// Discards a transcript waiting for confirmation or cancels a take the
+    /// engine is processing; consulted only in those two states (R4, R7).
     pub discard_shortcut: String,
     /// Input device name; `None` follows the system default.
     pub microphone: Option<String>,
+    pub engine: EnginePrefs,
     pub model: ModelPrefs,
     pub insertion: InsertionPrefs,
     pub interface: InterfacePrefs,
 }
 
+/// Where the user's own engine answers (R3, R3a). Viby never starts it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct EnginePrefs {
+    /// Full http(s) URL; empty leaves Viby unconfigured (R7).
+    pub endpoint: String,
+    /// Lets the endpoint be a private-network address. Off by default: when
+    /// on, audio leaves this PC (R3a).
+    pub allow_local_network: bool,
+}
+
+/// What the engine is asked for. The object keeps its pre-D23 key and shape
+/// so a previous revision still loads a store saved by this one; the old
+/// `variant` and `path` fields are dropped on load and never written.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ModelPrefs {
-    /// "base" or "small"; the measured choice lands in M2.
-    pub variant: String,
     /// "auto" or an ISO 639 code; multilingual is the contract default.
     pub language: String,
-    /// Local model file. The app never downloads during dictation.
-    pub path: Option<String>,
+    /// Optional model name for engines that ask for one; empty sends none.
+    pub name: String,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
@@ -65,6 +78,7 @@ impl Default for Preferences {
             shortcut: DEFAULT_SHORTCUT.to_string(),
             discard_shortcut: DEFAULT_DISCARD_SHORTCUT.to_string(),
             microphone: None,
+            engine: EnginePrefs::default(),
             model: ModelPrefs::default(),
             insertion: InsertionPrefs::default(),
             interface: InterfacePrefs::default(),
@@ -75,9 +89,8 @@ impl Default for Preferences {
 impl Default for ModelPrefs {
     fn default() -> Self {
         Self {
-            variant: "base".to_string(),
             language: "auto".to_string(),
-            path: None,
+            name: String::new(),
         }
     }
 }
@@ -101,8 +114,6 @@ pub enum PrefsError {
     MissingKey,
     #[error("shortcut modifier '{0}' is not recognized")]
     InvalidModifier(String),
-    #[error("model path must be a local Windows path")]
-    InvalidModelPath,
     #[error("shortcut '{0}' is already registered by another application")]
     ShortcutConflict(String),
     #[error("bar position must be left, center, or right")]
@@ -140,22 +151,6 @@ pub fn is_modifier(token: &str) -> bool {
     )
 }
 
-pub fn validate_model_path(path: Option<&str>) -> Result<(), PrefsError> {
-    let Some(path) = path else {
-        return Ok(());
-    };
-    let normalized = path.trim().replace('/', "\\");
-    if normalized.is_empty()
-        || path.contains("://")
-        || normalized.starts_with("\\\\")
-        || normalized.starts_with("\\?\\")
-        || normalized.starts_with("\\.\\")
-    {
-        return Err(PrefsError::InvalidModelPath);
-    }
-    Ok(())
-}
-
 pub fn validate_preferences(prefs: &Preferences) -> Result<(), PrefsError> {
     validate_preferences_field(prefs).map_err(|(_, error)| error)
 }
@@ -164,13 +159,16 @@ pub fn validate_preferences(prefs: &Preferences) -> Result<(), PrefsError> {
 /// whose value is wrong, so the message lands under the control the user has
 /// to change: an invalid discard shortcut is the discard field's error, never
 /// the dictation shortcut's (R7).
+///
+/// This is also the load-time check, so it never looks at the engine
+/// endpoint: R3a needs name resolution, and a load failure quarantines the
+/// whole store. The endpoint is checked on save and per take instead.
 pub fn validate_preferences_field(prefs: &Preferences) -> Result<(), (&'static str, PrefsError)> {
     validate_shortcut(&prefs.shortcut).map_err(|error| ("shortcut", error))?;
     validate_shortcut(&prefs.discard_shortcut).map_err(|error| ("discard-shortcut", error))?;
     if shortcuts_equal(&prefs.shortcut, &prefs.discard_shortcut) {
         return Err(("discard-shortcut", PrefsError::DuplicateShortcut));
     }
-    validate_model_path(prefs.model.path.as_deref()).map_err(|error| ("model-path", error))?;
     if !BAR_POSITIONS.contains(&prefs.interface.bar_position.as_str()) {
         return Err(("bar-position", PrefsError::InvalidBarPosition));
     }
@@ -198,12 +196,14 @@ mod tests {
         "shortcut",
         "discard_shortcut",
         "microphone",
+        "engine",
+        "endpoint",
+        "allow_local_network",
         "model",
         "insertion",
         "interface",
-        "variant",
         "language",
-        "path",
+        "name",
         "send_enter",
         "confirm_before_insert",
         "show_preview",
@@ -298,17 +298,6 @@ mod tests {
     }
 
     #[test]
-    fn rejects_non_local_model_paths() {
-        assert!(validate_model_path(Some(r"\\server\share\model.bin")).is_err());
-        assert!(validate_model_path(Some(r"\\.\PhysicalDrive0")).is_err());
-        assert!(validate_model_path(Some("C:\\models\\model.bin")).is_ok());
-    }
-    #[test]
-    fn rejects_uri_model_paths() {
-        assert!(validate_model_path(Some("https://example.com/model.bin")).is_err());
-        assert!(validate_model_path(Some("file:///C:/models/model.bin")).is_err());
-    }
-    #[test]
     fn rejects_invalid_persisted_preferences() {
         let prefs = Preferences {
             shortcut: "Space".to_string(),
@@ -363,6 +352,91 @@ mod tests {
         assert!(!prefs.insertion.confirm_before_insert);
         assert!(prefs.interface.show_preview);
         assert_eq!(prefs.model.language, "auto");
+        // The only path by which audio leaves this PC is opt-in (R3a).
+        assert!(!prefs.engine.allow_local_network);
+        assert!(prefs.engine.endpoint.is_empty());
+    }
+
+    /// A store written before D23: model path and variant, no engine.
+    const PRE_D23_STORE: &str = r#"{
+        "shortcut": "Ctrl+Alt+D",
+        "discard_shortcut": "Ctrl+Alt+X",
+        "microphone": null,
+        "model": {"variant": "small", "language": "pt", "path": "C:\\models\\ggml-small.bin"},
+        "insertion": {"send_enter": false, "confirm_before_insert": true},
+        "interface": {"show_preview": false, "bar_position": "left"}
+    }"#;
+
+    #[test]
+    fn an_old_store_loads_with_its_language_kept_and_no_engine() {
+        let prefs: Preferences = serde_json::from_str(PRE_D23_STORE).unwrap();
+        validate_preferences(&prefs).unwrap();
+        assert_eq!(prefs.model.language, "pt");
+        assert_eq!(prefs.model.name, "");
+        assert_eq!(prefs.engine, EnginePrefs::default());
+        assert_eq!(prefs.shortcut, "Ctrl+Alt+D");
+        assert!(prefs.insertion.confirm_before_insert);
+        // The discarded model fields are never written back.
+        let saved = serde_json::to_value(&prefs).unwrap();
+        assert!(saved["model"].get("path").is_none());
+        assert!(saved["model"].get("variant").is_none());
+    }
+
+    /// The pre-D23 schema, as the previous revision deserializes it. Rollback
+    /// (PLAN) depends on that revision loading what this one saves.
+    #[derive(Deserialize)]
+    #[serde(default)]
+    #[allow(dead_code)]
+    struct PreviousRevision {
+        shortcut: String,
+        discard_shortcut: String,
+        microphone: Option<String>,
+        model: PreviousModel,
+        insertion: InsertionPrefs,
+        interface: InterfacePrefs,
+    }
+
+    #[derive(Deserialize, Default)]
+    #[serde(default)]
+    #[allow(dead_code)]
+    struct PreviousModel {
+        variant: String,
+        language: String,
+        path: Option<String>,
+    }
+
+    impl Default for PreviousRevision {
+        fn default() -> Self {
+            Self {
+                shortcut: DEFAULT_SHORTCUT.into(),
+                discard_shortcut: DEFAULT_DISCARD_SHORTCUT.into(),
+                microphone: None,
+                model: PreviousModel::default(),
+                insertion: InsertionPrefs::default(),
+                interface: InterfacePrefs::default(),
+            }
+        }
+    }
+
+    #[test]
+    fn the_previous_revision_still_loads_a_store_saved_by_this_one() {
+        let prefs = Preferences {
+            engine: EnginePrefs {
+                endpoint: "http://127.0.0.1:8080/inference".into(),
+                allow_local_network: true,
+            },
+            model: ModelPrefs {
+                language: "es".into(),
+                name: "whisper-1".into(),
+            },
+            ..Preferences::default()
+        };
+        let saved = serde_json::to_value(&prefs).unwrap();
+        let previous: PreviousRevision = serde_json::from_value(saved).unwrap();
+        assert_eq!(previous.model.language, "es");
+        // The previous load path validates `model.path`; an endpoint never
+        // lands there.
+        assert_eq!(previous.model.path, None);
     }
 
     fn collect_keys(value: &serde_json::Value, out: &mut Vec<String>) {

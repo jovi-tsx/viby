@@ -18,11 +18,13 @@ tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-store = "2"
 tauri-plugin-global-shortcut = "2"
 cpal = "0.15"
-whisper-rs = "0.16"
+# The engine bridge (ADR 0002): rustls with the ring provider and the OS root
+# store read locally — no OpenSSL, no aws-lc build, no online revocation fetch.
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "multipart"] }
+tokio = { version = "1", features = ["net", "time"] }
 windows = { version = "0.61", features = [
   "Win32_Foundation",
   "Win32_Graphics_Dwm",
-  "Win32_Storage_FileSystem",
   "Win32_System_Com",
   "Win32_System_LibraryLoader",
   "Win32_UI_Shell",
@@ -34,3 +36,8 @@ serde_json = "1"
 thiserror = "2"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+# A local https engine for the pinned-connection TLS proofs.
+rcgen = { version = "0.13", default-features = false, features = ["crypto", "pem", "ring"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }

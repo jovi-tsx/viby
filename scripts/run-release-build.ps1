@@ -1,6 +1,3 @@
-if (-not $env:LIBCLANG_PATH) {
-    $env:LIBCLANG_PATH = 'C:\Program Files\LLVM\bin'
-}
 Push-Location (Split-Path $PSScriptRoot -Parent)
 try {
     cargo tauri build --no-bundle

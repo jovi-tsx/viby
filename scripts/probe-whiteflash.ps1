@@ -1,6 +1,6 @@
 # One-off probe v4: full bottom strip, ~10ms cadence, save the top frames by
 # localized whiteness around the cancel transition.
-param([string]$ModelPath = "C:\openai-whisper\ggml-base-q5_1.bin")
+param([string]$Endpoint = "http://127.0.0.1:8080/inference")
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing
 . (Join-Path $PSScriptRoot "lib-tray.ps1")
@@ -64,8 +64,8 @@ function Hot-Delta($bmp, $baseline, [int]$left, [int]$top) {
 $viby = $null
 try {
     $prefs = Get-Content $storeFile -Raw | ConvertFrom-Json
-    $prefs.preferences.model.path = $ModelPath
-    $prefs.preferences.model.variant = "base-q5_1"
+    . (Join-Path $PSScriptRoot "lib-engine.ps1")
+    Set-EnginePrefs $prefs.preferences $Endpoint
     $prefs.preferences.shortcut = "Ctrl+Shift+Space"
     $prefs.preferences.microphone = $null
     [System.IO.File]::WriteAllText($storeFile, ($prefs | ConvertTo-Json -Depth 8),

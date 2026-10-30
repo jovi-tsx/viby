@@ -48,9 +48,9 @@
             disabled
           />
           <p id="discard-shortcut-hint" class="muted">
-            Discards a transcript waiting for confirmation. Only consulted
-            while one is waiting, and must differ from the dictation
-            shortcut.
+            Discards a transcript waiting for confirmation, or cancels a take
+            your engine is still processing, in either activation mode. Must
+            differ from the dictation shortcut.
           </p>
           <p id="discard-shortcut-error" class="error" role="alert"></p>
         </fieldset>
@@ -64,33 +64,68 @@
         </fieldset>
 
         <fieldset class="card">
-          <legend>Model and language</legend>
-          <label for="model-variant">Model</label>
-          <select id="model-variant" name="model-variant" disabled>
-            <option value="base">base (faster)</option>
-            <option value="small">small (more accurate)</option>
-          </select>
-          <label for="model-path">Local model path</label>
+          <legend>Engine and language</legend>
+          <p id="engine-state" class="muted">…</p>
+          <label for="engine-endpoint">Engine address</label>
           <input
-            id="model-path"
-            name="model-path"
+            id="engine-endpoint"
+            name="engine-endpoint"
             type="text"
+            inputmode="url"
             autocomplete="off"
-            aria-describedby="model-state model-path-error"
-            placeholder="C:\Models\ggml-base.bin"
+            spellcheck="false"
+            aria-describedby="engine-endpoint-hint engine-endpoint-error"
+            placeholder="http://127.0.0.1:8080"
             disabled
           />
-          <p id="model-path-error" class="error" role="alert"></p>
+          <p id="engine-endpoint-hint" class="muted">
+            The speech-to-text server you run yourself. A server address such
+            as http://127.0.0.1:8080 uses /v1/audio/transcriptions; a full
+            path such as http://127.0.0.1:8080/inference is used as typed.
+            Viby does not start the engine.
+          </p>
+          <p id="engine-endpoint-error" class="error" role="alert"></p>
+          <label class="checkbox">
+            <input
+              id="allow-local-network"
+              name="allow-local-network"
+              type="checkbox"
+              aria-describedby="allow-local-network-hint"
+              disabled
+            />
+            Allow an engine on my local network
+          </label>
+          <p id="allow-local-network-hint" class="muted">
+            Off by default. When on, your audio leaves this PC and crosses
+            your local network to reach the engine. Addresses on the internet
+            are always refused.
+          </p>
+          <label for="model-name">Model name (optional)</label>
+          <input
+            id="model-name"
+            name="model-name"
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            aria-describedby="model-name-hint"
+            disabled
+          />
+          <p id="model-name-hint" class="muted">
+            Sent only to engines that ask for one; leave it empty otherwise.
+          </p>
           <label for="model-language">Language</label>
           <input
             id="model-language"
             name="model-language"
             type="text"
             autocomplete="off"
-            aria-describedby="model-state"
+            aria-describedby="model-language-hint"
             disabled
           />
-          <p id="model-state" class="muted">Model state: …</p>
+          <p id="model-language-hint" class="muted">
+            "auto" lets the engine detect it, or an ISO 639 code such as en
+            or es.
+          </p>
         </fieldset>
 
         <fieldset class="card">

@@ -2,7 +2,7 @@
 
 use std::sync::{
     atomic::{AtomicBool, Ordering},
-    mpsc::{self, Receiver, SyncSender, TryRecvError},
+    mpsc::{self, Receiver, Sender, TryRecvError},
     Arc, Mutex,
 };
 use std::thread;
@@ -11,10 +11,10 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
-use crate::audio::{AudioCapture, AudioError};
+use crate::audio::AudioCapture;
 use crate::bar;
-use crate::prefs::{InterfacePrefs, ModelPrefs};
-use crate::stt::{LocalWhisper, TranscriptionError, MIN_AUDIO_SAMPLES};
+use crate::engine::{self, Engine, EngineConfig, EngineError, MIN_AUDIO_SAMPLES};
+use crate::prefs::InterfacePrefs;
 
 const PREVIEW_WINDOW_SAMPLES: usize = 48_000;
 const PREVIEW_STEP_SAMPLES: usize = 6_400;
@@ -36,11 +36,12 @@ const CLOSE_WAIT_TIMEOUT: Duration = Duration::from_secs(5);
 pub enum FlowState {
     /// No capture, transcription, or insertion in progress.
     Idle,
-    /// A local model and microphone are being prepared.
+    /// The activation was accepted and the microphone is opening: the first
+    /// ordered signal a shortcut press produces.
     Loading,
-    /// Audio is being captured while preview windows are processed.
+    /// Audio is being captured while preview windows go to the engine.
     Recording,
-    /// Capture ended and the final local transcription is running.
+    /// Capture ended and the user's engine is transcribing the take.
     Processing,
     /// The transcript is finished and waiting for the user to accept or
     /// discard it. Only reachable with `confirm_before_insert` on.
@@ -82,6 +83,7 @@ pub(crate) enum StartDecision {
 
 pub(crate) const BUSY_DISCARDING: &str = "Just a moment — Viby is discarding the last take.";
 pub(crate) const BUSY_CONFIRMING: &str = "Accept or discard the last take first.";
+pub(crate) const NO_ENGINE: &str = "No speech engine is set — add your engine's address in Viby Options.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DictationPressDecision {
@@ -125,15 +127,20 @@ pub(crate) fn dictation_press_decision(
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DiscardPressDecision {
-    /// A transcript waits: discard it.
+    /// A transcript waits, or the engine is still processing the take:
+    /// discard it (R4).
     Discard,
-    /// The discard shortcut does nothing outside the waiting step (R7).
+    /// The discard shortcut does nothing anywhere else (R7).
     Ignore,
 }
 
+/// The discard shortcut is the keyboard path out of the two states that wait
+/// on something other than the user's voice: a transcript awaiting a decision
+/// and an engine that has not answered yet. A slow engine never holds someone
+/// without a pointing device until the timeout (R4, D23).
 pub(crate) fn discard_press_decision(state: FlowState) -> DiscardPressDecision {
     match state {
-        FlowState::Confirming => DiscardPressDecision::Discard,
+        FlowState::Confirming | FlowState::Processing => DiscardPressDecision::Discard,
         _ => DiscardPressDecision::Ignore,
     }
 }
@@ -141,7 +148,7 @@ pub(crate) fn discard_press_decision(state: FlowState) -> DiscardPressDecision {
 /// What a shortcut press means right now.
 ///
 /// Cancellation returns the dock instantly but the worker still has to discard
-/// buffers and reap the inference thread. A press landing in that window would
+/// buffers and abandon engine requests. A press landing in that window would
 /// otherwise vanish with no explanation, which reads as a dropped shortcut. A
 /// pending confirmation is refused for the same reason, and never silently
 /// throws away a transcript the user has not decided on.
@@ -197,7 +204,7 @@ pub struct FlowController {
 
 enum Command {
     Start {
-        model: ModelPrefs,
+        engine: EngineConfig,
         microphone: Option<String>,
         show_preview: bool,
         confirm_before_insert: bool,
@@ -216,8 +223,8 @@ impl FlowController {
         let worker_state = Arc::clone(&state);
         let worker_cancel = Arc::clone(&cancel_requested);
         let worker_stop = Arc::clone(&stop_requested);
-        let worker_closing = Arc::clone(&closing);
         let worker_app = app.clone();
+        let engine = Arc::new(Engine::system());
         thread::spawn(move || {
             run_worker(
                 worker_app,
@@ -225,7 +232,7 @@ impl FlowController {
                 worker_state,
                 worker_cancel,
                 worker_stop,
-                worker_closing,
+                engine,
             )
         });
         Self {
@@ -247,7 +254,7 @@ impl FlowController {
 
     pub fn start(
         &self,
-        model: ModelPrefs,
+        engine: EngineConfig,
         microphone: Option<String>,
         interface: InterfacePrefs,
         confirm_before_insert: bool,
@@ -273,6 +280,13 @@ impl FlowController {
                 return false;
             }
         }
+        if !engine.is_configured() {
+            // Refused before the microphone opens: there is nowhere to send
+            // the take (R3, S3). Viby never opens Options on its own to ask.
+            drop(state);
+            self.notice(&interface.bar_position, NO_ENGINE);
+            return false;
+        }
         self.cancel_requested.store(false, Ordering::Release);
         self.stop_requested.store(false, Ordering::Release);
         *state = FlowState::Loading;
@@ -287,12 +301,12 @@ impl FlowController {
         );
         // The capsule is placed and shown here, at the first ordered
         // activation signal, so the human sees Viby react to the shortcut
-        // before the model finishes loading. It is never activated: the
+        // before the microphone opens. It is never activated: the
         // destination window keeps focus for M4 insertion.
         bar::show(&self.app, &interface.bar_position);
         self.commands
             .send(Command::Start {
-                model,
+                engine,
                 microphone,
                 show_preview: interface.show_preview,
                 confirm_before_insert,
@@ -308,7 +322,7 @@ impl FlowController {
     /// harness driving it directly).
     pub fn dictation_pressed(
         &self,
-        model: ModelPrefs,
+        engine: EngineConfig,
         microphone: Option<String>,
         interface: InterfacePrefs,
         confirm_before_insert: bool,
@@ -318,7 +332,7 @@ impl FlowController {
         let closing = self.closing.load(Ordering::Acquire);
         match dictation_press_decision(state, cancel_requested, closing, confirm_before_insert) {
             DictationPressDecision::Begin => {
-                self.start(model, microphone, interface, confirm_before_insert);
+                self.start(engine, microphone, interface, confirm_before_insert);
             }
             DictationPressDecision::End => self.stop(),
             DictationPressDecision::Accept => self.accept(),
@@ -327,10 +341,10 @@ impl FlowController {
         }
     }
 
-    /// Entry point for every press of the *discard* shortcut (D16). A no-op
-    /// outside `Confirming`: R7 is explicit that this key does nothing
-    /// outside the waiting step, so it never cancels a live capture the way
-    /// the dock's own discard control does.
+    /// Entry point for every press of the *discard* shortcut (D16). It acts
+    /// only while a transcript waits or the engine is processing (R4, R7), so
+    /// it never cancels a live capture the way the dock's own discard
+    /// control does.
     pub fn discard_pressed(&self) {
         if discard_press_decision(self.current_state()) == DiscardPressDecision::Discard {
             self.cancel();
@@ -359,7 +373,7 @@ impl FlowController {
     }
 
     /// Arms cancellation and takes the dock down immediately. The worker still
-    /// has to discard buffers and reap the inference thread, and the user must
+    /// has to discard buffers and abandon engine requests, and the user must
     /// not wait for that to see their own decision land; an activation that
     /// arrives before the teardown finishes gets the busy notice.
     ///
@@ -454,7 +468,7 @@ impl FlowController {
 }
 
 struct SessionConfig {
-    model: ModelPrefs,
+    engine: EngineConfig,
     microphone: Option<String>,
     show_preview: bool,
     confirm_before_insert: bool,
@@ -466,11 +480,11 @@ fn run_worker(
     state: Arc<Mutex<FlowState>>,
     cancel_requested: Arc<AtomicBool>,
     stop_requested: Arc<AtomicBool>,
-    closing: Arc<AtomicBool>,
+    engine: Arc<Engine>,
 ) {
     while let Ok(command) = commands.recv() {
         let Command::Start {
-            model,
+            engine: engine_config,
             microphone,
             show_preview,
             confirm_before_insert,
@@ -484,14 +498,89 @@ fn run_worker(
             &state,
             &cancel_requested,
             &stop_requested,
-            &closing,
+            &engine,
             SessionConfig {
-                model,
+                engine: engine_config,
                 microphone,
                 show_preview,
                 confirm_before_insert,
             },
         );
+    }
+}
+
+/// What the engine said, delivered back to the session loop.
+enum EngineEvent {
+    Check(Result<(), EngineError>),
+    Preview {
+        sequence: u64,
+        result: Result<String, EngineError>,
+    },
+    Final(Result<String, EngineError>),
+}
+
+/// The session's requests in flight. Dropping it aborts every one, which
+/// closes its connection and drops its audio: no request outlives the take
+/// that made it, whichever way the session ends (R3, R5, S9).
+#[derive(Default)]
+struct EngineRequests {
+    check: Option<tauri::async_runtime::JoinHandle<()>>,
+    preview: Option<tauri::async_runtime::JoinHandle<()>>,
+    final_request: Option<tauri::async_runtime::JoinHandle<()>>,
+}
+
+impl EngineRequests {
+    fn abort(slot: &mut Option<tauri::async_runtime::JoinHandle<()>>) {
+        if let Some(handle) = slot.take() {
+            handle.abort();
+        }
+    }
+}
+
+impl Drop for EngineRequests {
+    fn drop(&mut self) {
+        Self::abort(&mut self.check);
+        Self::abort(&mut self.preview);
+        Self::abort(&mut self.final_request);
+    }
+}
+
+fn spawn_request<F>(events: &Sender<EngineEvent>, request: F) -> tauri::async_runtime::JoinHandle<()>
+where
+    F: std::future::Future<Output = EngineEvent> + Send + 'static,
+{
+    let events = events.clone();
+    tauri::async_runtime::spawn(async move {
+        let _ = events.send(request.await);
+    })
+}
+
+/// Which request the session sends next. The final never waits for a
+/// preview: once the take ends it goes out at once and any preview still in
+/// flight is abandoned (R3).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Dispatch {
+    Nothing,
+    Final,
+    Preview,
+}
+
+pub(crate) fn next_dispatch(
+    finishing: bool,
+    final_pending: bool,
+    preview_in_flight: bool,
+    preview_queued: bool,
+) -> Dispatch {
+    if finishing {
+        if final_pending {
+            Dispatch::Final
+        } else {
+            Dispatch::Nothing
+        }
+    } else if !preview_in_flight && preview_queued {
+        Dispatch::Preview
+    } else {
+        Dispatch::Nothing
     }
 }
 
@@ -501,7 +590,7 @@ fn run_session(
     state: &Arc<Mutex<FlowState>>,
     cancel_requested: &Arc<AtomicBool>,
     stop_requested: &Arc<AtomicBool>,
-    closing: &Arc<AtomicBool>,
+    engine: &Arc<Engine>,
     config: SessionConfig,
 ) {
     // A Cancel/Close queued behind Start must never open the microphone.
@@ -516,54 +605,21 @@ fn run_session(
             return;
         }
     });
-    let (jobs, results, inference_thread) =
-        spawn_inference(config.model, Arc::clone(cancel_requested));
-    let ready = wait_for_model(
-        &results,
-        commands,
-        cancel_requested,
-        stop_requested,
-        &mut capture,
-    );
-    let mut final_audio = match ready {
-        Ok(final_audio) => final_audio,
-        Err(error) => {
-            if let Some(capture) = capture.take() {
-                capture.discard();
-            }
-            shutdown_inference(jobs, inference_thread, closing);
-            match error {
-                WaitForModelError::Transcription(TranscriptionError::Cancelled) => {
-                    cancel(app, state)
-                }
-                WaitForModelError::Transcription(error) => fail(app, state, error),
-                WaitForModelError::Capture(error) => fail(app, state, error),
-            }
-            return;
-        }
-    };
-    if cancel_requested.load(Ordering::Acquire) {
-        if let Some(capture) = capture.take() {
-            capture.discard();
-        }
-        shutdown_inference(jobs, inference_thread, closing);
-        cancel(app, state);
-        return;
-    }
+    let (events_tx, events) = mpsc::channel();
+    let mut requests = EngineRequests::default();
+    // The engine is checked as the microphone opens, never before it: capture
+    // is not delayed, and a dead engine ends the take at once (R3).
+    requests.check = Some(spawn_request(&events_tx, {
+        let (engine, engine_config) = (Arc::clone(engine), config.engine.clone());
+        async move { EngineEvent::Check(engine.check(&engine_config).await) }
+    }));
 
-    let mut queue = LatestPreviewQueue::default();
-    let mut sequence = 0_u64;
-    let mut next_preview_at = Instant::now();
-    let mut next_level_at = Instant::now();
-    let mut last_queued_samples = 0_u64;
-    let mut preview_in_flight = false;
-    let mut finishing = final_audio.is_some();
-    let mut final_submitted = false;
-    let mut final_started: Option<Instant> = None;
-    if !finishing {
+    let mut final_audio: Option<Vec<f32>> = None;
+    let mut finishing = false;
+    {
         // Decided under the state lock: a release or cancel that lands while
-        // the model loads can never be followed by a Recording state.
-        enum PostLoad {
+        // the microphone opens can never be followed by a Recording state.
+        enum Opened {
             Cancel,
             Finish,
             Record,
@@ -571,40 +627,35 @@ fn run_session(
         let decision = match state.lock() {
             Ok(mut current) => {
                 if cancel_requested.load(Ordering::Acquire) {
-                    PostLoad::Cancel
+                    Opened::Cancel
                 } else if stop_requested.load(Ordering::Acquire) {
-                    PostLoad::Finish
+                    Opened::Finish
                 } else {
                     *current = FlowState::Recording;
-                    PostLoad::Record
+                    Opened::Record
                 }
             }
-            Err(_) => PostLoad::Cancel,
+            Err(_) => Opened::Cancel,
         };
         match decision {
-            PostLoad::Cancel => {
-                cancel_session(app, state, &mut capture, jobs, inference_thread, closing);
+            Opened::Cancel => {
+                cancel_session(app, state, &mut capture, requests);
                 return;
             }
-            PostLoad::Finish => {
-                let Some(current_capture) = capture.take() else {
-                    shutdown_inference(jobs, inference_thread, closing);
-                    fail(app, state, TranscriptionError::Inference);
-                    return;
-                };
+            Opened::Finish => {
+                let current_capture = capture.take().expect("capture was just opened");
                 match current_capture.finish() {
                     Ok(audio) => {
                         final_audio = Some(audio);
                         finishing = true;
                     }
                     Err(error) => {
-                        shutdown_inference(jobs, inference_thread, closing);
                         fail(app, state, error);
                         return;
                     }
                 }
             }
-            PostLoad::Record => {
+            Opened::Record => {
                 tracing::info!(state = ?FlowState::Recording, "flow state");
                 emit(
                     app,
@@ -619,9 +670,17 @@ fn run_session(
     if finishing {
         set_state(app, state, FlowState::Processing, None);
     }
+
+    let mut queue = LatestPreviewQueue::default();
+    let mut sequence = 0_u64;
+    let mut shown_sequence: Option<u64> = None;
+    let mut next_preview_at = Instant::now();
+    let mut next_level_at = Instant::now();
+    let mut last_queued_samples = 0_u64;
+    let mut final_started: Option<Instant> = None;
     loop {
         if cancel_requested.load(Ordering::Acquire) {
-            cancel_session(app, state, &mut capture, jobs, inference_thread, closing);
+            cancel_session(app, state, &mut capture, requests);
             return;
         }
 
@@ -639,7 +698,6 @@ fn run_session(
                                 set_state(app, state, FlowState::Processing, None);
                             }
                             Err(error) => {
-                                shutdown_inference(jobs, inference_thread, closing);
                                 fail(app, state, error);
                                 return;
                             }
@@ -654,7 +712,7 @@ fn run_session(
             }
         }
         if cancel_requested.load(Ordering::Acquire) {
-            cancel_session(app, state, &mut capture, jobs, inference_thread, closing);
+            cancel_session(app, state, &mut capture, requests);
             return;
         }
 
@@ -692,84 +750,90 @@ fn run_session(
                     if let Some(capture) = capture.take() {
                         capture.discard();
                     }
-                    shutdown_inference(jobs, inference_thread, closing);
                     fail(app, state, error);
                     return;
                 }
             }
         }
 
-        if !preview_in_flight {
-            if finishing && !final_submitted {
-                if let Some(audio) = final_audio.take() {
-                    if jobs.send(InferenceJob::Final(audio)).is_err() {
-                        shutdown_inference(jobs, inference_thread, closing);
-                        fail(app, state, TranscriptionError::Inference);
-                        return;
+        match next_dispatch(
+            finishing,
+            final_audio.is_some(),
+            requests.preview.is_some(),
+            queue.has_queued(),
+        ) {
+            Dispatch::Final => {
+                let audio = final_audio.take().expect("final audio is pending");
+                // The take ended: no preview or check may hold the final back.
+                EngineRequests::abort(&mut requests.preview);
+                EngineRequests::abort(&mut requests.check);
+                let bound = engine::final_response_bound(audio.len());
+                final_started = Some(Instant::now());
+                requests.final_request = Some(spawn_request(&events_tx, {
+                    let (engine, engine_config) = (Arc::clone(engine), config.engine.clone());
+                    async move {
+                        EngineEvent::Final(engine.transcribe(&engine_config, audio, bound).await)
                     }
-                    final_submitted = true;
-                    final_started = Some(Instant::now());
-                    preview_in_flight = true;
-                }
-            } else if !finishing {
-                if let Some(job) = queue.take_latest() {
-                    if jobs.send(InferenceJob::Preview(job)).is_err() {
-                        shutdown_inference(jobs, inference_thread, closing);
-                        fail(app, state, TranscriptionError::Inference);
-                        return;
-                    }
-                    preview_in_flight = true;
-                }
+                }));
             }
+            Dispatch::Preview => {
+                let job = queue.take_latest().expect("a preview is queued");
+                requests.preview = Some(spawn_request(&events_tx, {
+                    let (engine, engine_config) = (Arc::clone(engine), config.engine.clone());
+                    async move {
+                        EngineEvent::Preview {
+                            sequence: job.sequence,
+                            result: engine
+                                .transcribe(&engine_config, job.samples, engine::PREVIEW_RESPONSE_BOUND)
+                                .await,
+                        }
+                    }
+                }));
+            }
+            Dispatch::Nothing => {}
         }
         if cancel_requested.load(Ordering::Acquire) {
-            cancel_session(app, state, &mut capture, jobs, inference_thread, closing);
+            cancel_session(app, state, &mut capture, requests);
             return;
         }
-        match results.try_recv() {
-            Ok(InferenceResult::Preview { sequence, result }) => {
-                if cancel_requested.load(Ordering::Acquire) {
-                    cancel_session(app, state, &mut capture, jobs, inference_thread, closing);
-                    return;
+        match events.try_recv() {
+            Ok(EngineEvent::Check(Ok(()))) => requests.check = None,
+            Ok(EngineEvent::Check(Err(error))) => {
+                // The engine cannot take this take: end it now rather than let
+                // the user speak into it (R3).
+                if let Some(capture) = capture.take() {
+                    capture.discard();
                 }
-                preview_in_flight = false;
-                if accepts_preview_result(finishing, &queue, sequence) {
-                    match result {
-                        Ok(text) => {
-                            // Counts and delivery only, never recognized text
-                            // (R5) — the same discipline as `flow final`.
-                            let chars = text.chars().count();
-                            let delivered = app
-                                .emit(
-                                    "dictation://flow",
-                                    FlowEvent::Preview {
-                                        sequence,
-                                        text,
-                                        provisional: true,
-                                    },
-                                )
-                                .is_ok();
-                            tracing::info!(chars, delivered, "flow preview");
-                        }
-                        Err(TranscriptionError::Empty) => {}
-                        Err(error) => {
-                            if let Some(capture) = capture.take() {
-                                capture.discard();
-                            }
-                            shutdown_inference(jobs, inference_thread, closing);
-                            fail(app, state, error);
-                            return;
-                        }
+                drop(requests);
+                fail(app, state, error);
+                return;
+            }
+            Ok(EngineEvent::Preview { sequence, result }) => {
+                requests.preview = None;
+                if accepts_preview_result(finishing, shown_sequence, sequence) {
+                    // A failed preview is dropped silently: capture continues
+                    // and only the final request can fail the flow (R3).
+                    if let Ok(text) = result {
+                        // Counts and delivery only, never recognized text
+                        // (R5) — the same discipline as `flow final`.
+                        let chars = text.chars().count();
+                        let delivered = app
+                            .emit(
+                                "dictation://flow",
+                                FlowEvent::Preview {
+                                    sequence,
+                                    text,
+                                    provisional: true,
+                                },
+                            )
+                            .is_ok();
+                        shown_sequence = Some(sequence);
+                        tracing::info!(chars, delivered, "flow preview");
                     }
                 }
             }
-            Ok(InferenceResult::Final(result)) => {
-                if cancel_requested.load(Ordering::Acquire) {
-                    cancel_session(app, state, &mut capture, jobs, inference_thread, closing);
-                    return;
-                }
-                drop(jobs);
-                let _ = inference_thread.join();
+            Ok(EngineEvent::Final(result)) => {
+                drop(requests);
                 if cancel_requested.load(Ordering::Acquire) {
                     cancel(app, state);
                     return;
@@ -787,161 +851,28 @@ fn run_session(
                             cancel(app, state);
                         }
                     }
-                    Err(TranscriptionError::Cancelled) => cancel(app, state),
                     Err(error) => fail(app, state, error),
                 }
                 return;
             }
-            Ok(InferenceResult::Ready(_)) => {}
-            Err(TryRecvError::Empty) => {}
-            Err(TryRecvError::Disconnected) => {
-                fail(app, state, TranscriptionError::Inference);
-                return;
-            }
+            Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => {}
         }
         thread::sleep(Duration::from_millis(30));
     }
 }
 
-enum InferenceJob {
-    Preview(PreviewJob),
-    Final(Vec<f32>),
-}
-
-enum InferenceResult {
-    Ready(Result<(), TranscriptionError>),
-    Preview {
-        sequence: u64,
-        result: Result<String, TranscriptionError>,
-    },
-    Final(Result<String, TranscriptionError>),
-}
-
-fn spawn_inference(
-    model: ModelPrefs,
-    cancelled: Arc<AtomicBool>,
-) -> (
-    SyncSender<InferenceJob>,
-    Receiver<InferenceResult>,
-    thread::JoinHandle<()>,
-) {
-    let (jobs, job_receiver) = mpsc::sync_channel(1);
-    let (results, result_receiver) = mpsc::channel();
-    let thread = thread::spawn(move || {
-        let mut whisper = match LocalWhisper::load(&model) {
-            Ok(whisper) => {
-                let _ = results.send(InferenceResult::Ready(Ok(())));
-                whisper
-            }
-            Err(error) => {
-                let _ = results.send(InferenceResult::Ready(Err(error)));
-                return;
-            }
-        };
-        while let Ok(job) = job_receiver.recv() {
-            match job {
-                InferenceJob::Preview(job) => {
-                    let sequence = job.sequence;
-                    let result = whisper.transcribe(&job.samples, &cancelled);
-                    let _ = results.send(InferenceResult::Preview { sequence, result });
-                }
-                InferenceJob::Final(audio) => {
-                    let result = whisper.transcribe(&audio, &cancelled);
-                    let _ = results.send(InferenceResult::Final(result));
-                    return;
-                }
-            }
-        }
-    });
-    (jobs, result_receiver, thread)
-}
-
-enum WaitForModelError {
-    Transcription(TranscriptionError),
-    Capture(AudioError),
-}
-
-fn wait_for_model(
-    results: &Receiver<InferenceResult>,
-    commands: &Receiver<Command>,
-    cancelled: &Arc<AtomicBool>,
-    stop_requested: &Arc<AtomicBool>,
-    capture: &mut Option<AudioCapture>,
-) -> Result<Option<Vec<f32>>, WaitForModelError> {
-    let mut final_audio = None;
-    loop {
-        loop {
-            match commands.try_recv() {
-                Ok(Command::Stop) => {
-                    stop_requested.store(true, Ordering::Release);
-                    if let Some(current_capture) = capture.take() {
-                        final_audio = Some(
-                            current_capture
-                                .finish()
-                                .map_err(WaitForModelError::Capture)?,
-                        );
-                    }
-                }
-                Ok(Command::Cancel) => cancelled.store(true, Ordering::Release),
-                Ok(Command::Start { .. }) => {}
-                Err(TryRecvError::Empty) | Err(TryRecvError::Disconnected) => break,
-            }
-        }
-        if cancelled.load(Ordering::Acquire) {
-            return Err(WaitForModelError::Transcription(
-                TranscriptionError::Cancelled,
-            ));
-        }
-        match results.recv_timeout(Duration::from_millis(50)) {
-            Ok(InferenceResult::Ready(result)) => {
-                result.map_err(WaitForModelError::Transcription)?;
-                return Ok(final_audio);
-            }
-            Ok(_) => {
-                return Err(WaitForModelError::Transcription(
-                    TranscriptionError::Inference,
-                ));
-            }
-            Err(mpsc::RecvTimeoutError::Timeout) => {}
-            Err(mpsc::RecvTimeoutError::Disconnected) => {
-                return Err(WaitForModelError::Transcription(
-                    TranscriptionError::Inference,
-                ));
-            }
-        }
-    }
-}
-
-/// Reaps the inference thread — except during Close, where it is detached.
-/// The S9 exit budget must not depend on a pathological decode or a stuck
-/// model load honoring the abort flag. Outside Close the thread is always
-/// joined: a detached decode would retain its audio past the flow (R5) and
-/// could overlap the next session after the shared cancel flag resets (S2).
-fn shutdown_inference(
-    jobs: SyncSender<InferenceJob>,
-    thread: thread::JoinHandle<()>,
-    closing: &Arc<AtomicBool>,
-) {
-    drop(jobs);
-    if closing.load(Ordering::Acquire) {
-        drop(thread);
-    } else {
-        let _ = thread.join();
-    }
-}
-
+/// Discards the capture and abandons every request before announcing the
+/// cancellation, so nothing of the take survives the notice.
 fn cancel_session(
     app: &AppHandle,
     state: &Arc<Mutex<FlowState>>,
     capture: &mut Option<AudioCapture>,
-    jobs: SyncSender<InferenceJob>,
-    inference_thread: thread::JoinHandle<()>,
-    closing: &Arc<AtomicBool>,
+    requests: EngineRequests,
 ) {
     if let Some(capture) = capture.take() {
         capture.discard();
     }
-    shutdown_inference(jobs, inference_thread, closing);
+    drop(requests);
     cancel(app, state);
 }
 
@@ -1053,15 +984,15 @@ pub(crate) struct PreviewJob {
     pub(crate) samples: Vec<f32>,
 }
 
+/// Holds only the newest window not yet sent: a request carries the audio
+/// that is most recent when it goes out, never a queued older one.
 #[derive(Default)]
 pub(crate) struct LatestPreviewQueue {
     latest: Option<PreviewJob>,
-    latest_sequence: Option<u64>,
 }
 
 impl LatestPreviewQueue {
     pub(crate) fn replace(&mut self, job: PreviewJob) {
-        self.latest_sequence = Some(job.sequence);
         self.latest = Some(job);
     }
 
@@ -1069,15 +1000,17 @@ impl LatestPreviewQueue {
         self.latest.take()
     }
 
-    fn is_latest(&self, sequence: u64) -> bool {
-        self.latest_sequence == Some(sequence)
+    pub(crate) fn has_queued(&self) -> bool {
+        self.latest.is_some()
     }
 }
 
-/// A preview result is shown only while capture is active and the result
-/// belongs to the newest queued window; delayed results are dropped.
-fn accepts_preview_result(finishing: bool, queue: &LatestPreviewQueue, sequence: u64) -> bool {
-    !finishing && queue.is_latest(sequence)
+/// A preview result is shown while capture is active when it is newer than
+/// the preview on screen. Newer windows queued while it ran do not make it
+/// stale — otherwise an engine slower than the window cadence would never
+/// preview at all (R3).
+pub(crate) fn accepts_preview_result(finishing: bool, shown: Option<u64>, sequence: u64) -> bool {
+    !finishing && shown.is_none_or(|shown| sequence > shown)
 }
 
 #[cfg(test)]
@@ -1200,17 +1133,21 @@ mod tests {
     }
 
     #[test]
-    fn discard_shortcut_only_acts_while_a_transcript_waits() {
-        // R7: "does nothing outside the waiting step."
-        assert_eq!(
-            discard_press_decision(FlowState::Confirming),
-            DiscardPressDecision::Discard
-        );
+    fn discard_shortcut_acts_while_a_transcript_waits_or_the_engine_processes() {
+        // R4, R7: the keyboard path out of a waiting transcript and out of a
+        // slow engine, in either activation mode — the decision reads the
+        // state, never the preference.
+        for state in [FlowState::Confirming, FlowState::Processing] {
+            assert_eq!(
+                discard_press_decision(state),
+                DiscardPressDecision::Discard,
+                "{state:?}"
+            );
+        }
         for state in [
             FlowState::Idle,
             FlowState::Loading,
             FlowState::Recording,
-            FlowState::Processing,
             FlowState::Error,
         ] {
             assert_eq!(
@@ -1245,53 +1182,6 @@ mod tests {
             );
         }
     }
-    // Close must not wait on a decode or model load that ignores the abort
-    // flag. The watchdog bounds the failure: with a join, the call returns
-    // only after the stuck thread finally ends, blowing the budget.
-    #[test]
-    fn close_detaches_a_stuck_inference_thread() {
-        let (jobs, _results) = mpsc::sync_channel::<InferenceJob>(1);
-        let stuck = Arc::new(AtomicBool::new(true));
-        let worker_flag = Arc::clone(&stuck);
-        let thread = thread::spawn(move || {
-            while worker_flag.load(Ordering::Acquire) {
-                thread::sleep(Duration::from_millis(10));
-            }
-        });
-        let watchdog = Arc::clone(&stuck);
-        thread::spawn(move || {
-            thread::sleep(Duration::from_secs(3));
-            watchdog.store(false, Ordering::Release);
-        });
-        let started = Instant::now();
-        shutdown_inference(jobs, thread, &Arc::new(AtomicBool::new(true)));
-        let waited = started.elapsed();
-        stuck.store(false, Ordering::Release);
-        assert!(
-            waited < Duration::from_secs(1),
-            "Close waited {waited:?} on a stuck inference thread"
-        );
-    }
-
-    // Outside Close the thread is always reaped: a detached decode would
-    // retain its audio past the flow (R5) and could overlap the next session.
-    #[test]
-    fn ordinary_cancel_reaps_the_inference_thread() {
-        let (jobs, results) = mpsc::sync_channel::<InferenceJob>(1);
-        let reaped = Arc::new(AtomicBool::new(false));
-        let worker_flag = Arc::clone(&reaped);
-        let thread = thread::spawn(move || {
-            while results.recv().is_ok() {}
-            thread::sleep(Duration::from_millis(50));
-            worker_flag.store(true, Ordering::Release);
-        });
-        shutdown_inference(jobs, thread, &Arc::new(AtomicBool::new(false)));
-        assert!(
-            reaped.load(Ordering::Acquire),
-            "cancel published before the inference thread was reaped"
-        );
-    }
-
     #[test]
     fn close_with_no_active_flow_exits_clean() {
         assert_eq!(
@@ -1343,35 +1233,50 @@ mod tests {
     }
 
     #[test]
-    fn delayed_result_for_older_window_is_rejected() {
-        let mut queue = LatestPreviewQueue::default();
-        queue.replace(PreviewJob {
-            sequence: 1,
-            samples: vec![0.1],
-        });
-        assert!(queue.is_latest(1));
-        queue.replace(PreviewJob {
-            sequence: 2,
-            samples: vec![0.2],
-        });
-        assert!(!queue.is_latest(1));
-        assert!(queue.is_latest(2));
+    fn a_preview_older_than_the_one_shown_is_dropped() {
+        assert!(accepts_preview_result(false, None, 1));
+        assert!(accepts_preview_result(false, Some(1), 2));
+        assert!(!accepts_preview_result(false, Some(2), 1));
+        assert!(!accepts_preview_result(false, Some(2), 2));
     }
 
     #[test]
-    fn preview_result_needs_current_window_and_active_capture() {
+    fn a_slow_engine_still_previews_while_newer_windows_queue() {
+        // The engine took longer than several 400 ms ticks: windows 2..5
+        // queued behind the request for window 1. Its answer is still newer
+        // than anything shown, so it is shown; the next request then carries
+        // only the newest window, never a backlog.
         let mut queue = LatestPreviewQueue::default();
-        queue.replace(PreviewJob {
-            sequence: 1,
-            samples: vec![0.1],
-        });
-        assert!(accepts_preview_result(false, &queue, 1));
-        assert!(!accepts_preview_result(true, &queue, 1));
-        queue.replace(PreviewJob {
-            sequence: 2,
-            samples: vec![0.2],
-        });
-        assert!(!accepts_preview_result(false, &queue, 1));
-        assert!(accepts_preview_result(false, &queue, 2));
+        for sequence in 2..=5 {
+            queue.replace(PreviewJob {
+                sequence,
+                samples: vec![sequence as f32],
+            });
+        }
+        assert!(accepts_preview_result(false, None, 1));
+        let next = queue.take_latest().expect("newest window");
+        assert_eq!(next.sequence, 5);
+        assert!(!queue.has_queued());
+    }
+
+    #[test]
+    fn no_preview_is_shown_once_the_take_ended() {
+        assert!(!accepts_preview_result(true, None, 1));
+        assert!(!accepts_preview_result(true, Some(1), 9));
+    }
+
+    #[test]
+    fn the_final_goes_out_at_once_even_with_a_preview_in_flight() {
+        assert_eq!(next_dispatch(true, true, true, true), Dispatch::Final);
+        assert_eq!(next_dispatch(true, true, false, false), Dispatch::Final);
+        // Once sent, nothing else goes out for this take.
+        assert_eq!(next_dispatch(true, false, true, true), Dispatch::Nothing);
+    }
+
+    #[test]
+    fn at_most_one_preview_request_is_in_flight() {
+        assert_eq!(next_dispatch(false, false, false, true), Dispatch::Preview);
+        assert_eq!(next_dispatch(false, false, true, true), Dispatch::Nothing);
+        assert_eq!(next_dispatch(false, false, false, false), Dispatch::Nothing);
     }
 }

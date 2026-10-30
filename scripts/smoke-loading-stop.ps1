@@ -1,7 +1,13 @@
-# M2 lifecycle smoke: hold-to-talk state machine against the local small model.
+# Lifecycle smoke: hold-to-talk state machine against the user's engine (D23).
+# Pass a slow model with -StartEngine -EngineModel ...ggml-small.bin to widen
+# the Processing window run D needs.
 # Evidence channel: the app's own tracing log (`flow state` lines), captured
 # via redirected stdout — immune to UIA sampling races.
-# Run A (250 ms hold, release during model load): must never enter Recording.
+# Run A (250 ms hold): orders Loading before Processing. Before D23 this run
+# released during the model load and asserted no Recording; there is no model
+# load any more, Loading only spans the microphone opening, and the same
+# state-lock decision in flow.rs still orders a release there before any
+# Recording.
 # Run B (1.5 s hold): must order Loading -> Recording -> Processing -> Idle
 # and log a delivered final; this is the mandatory positive control that keeps
 # the Close no-final assertions non-vacuous. Silence decodes slowly, so the
@@ -10,11 +16,19 @@
 # exits; capture must never reach Processing.
 # Run D (tray Close during Processing): S9 — cancels the final inference,
 # exits without delivering a result.
-# Also asserts the process holds zero TCP connections during the flows.
-# Close during Loading is not reachable here: the model load measured 0.34 s
-# on this host, far below tray-menu latency, so a run would always land in a
-# later state. That path is covered by the flow.rs detach unit tests.
-# Run from WSL: powershell.exe -ExecutionPolicy Bypass -File scripts\smoke-loading-stop.ps1
+# Also asserts the process connects only to the engine it checked (R3a).
+# Close during Loading is not reachable here: Loading spans only the
+# microphone opening, far below tray-menu latency.
+# Run from WSL: powershell.exe -ExecutionPolicy Bypass -File scripts\smoke-loading-stop.ps1 [-StartEngine]
+
+param(
+    # The user's engine (D23). It must already be running, unless
+    # -StartEngine is given: the user authorized that for M2b proof runs only.
+    [string]$Endpoint = "http://127.0.0.1:8080/inference",
+    [switch]$StartEngine,
+    [string]$EngineExe = "C:\openai-whisper\whisper-bin-x64-v1.9.2\Release\whisper-server.exe",
+    [string]$EngineModel = "C:\openai-whisper\ggml-base-q5_1.bin"
+)
 
 $ErrorActionPreference = "Stop"
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, System.Windows.Forms
@@ -23,6 +37,8 @@ $AE = [System.Windows.Automation.AutomationElement]
 $CT = [System.Windows.Automation.ControlType]
 $root = $AE::RootElement
 . (Join-Path $PSScriptRoot "lib-tray.ps1")
+. (Join-Path $PSScriptRoot "lib-engine.ps1")
+$engineProcess = $null
 
 $repo = Split-Path $PSScriptRoot -Parent
 $exe = Join-Path $repo "src-tauri\target\release\viby.exe"
@@ -148,9 +164,10 @@ function Wait-ForFinal($timeoutSeconds) {
 }
 
 try {
+    if ($StartEngine) { $engineProcess = Start-ProofEngine $Endpoint $EngineExe $EngineModel }
+    if (-not (Test-EngineListening $Endpoint)) { throw "no engine listens on $Endpoint; start it or pass -StartEngine" }
     $prefs = Get-Content $storeFile -Raw | ConvertFrom-Json
-    $prefs.preferences.model.path = "C:\openai-whisper\ggml-small.bin"
-    $prefs.preferences.model.variant = "small"
+    Set-EnginePrefs $prefs.preferences $Endpoint
     $prefs.preferences.shortcut = "Ctrl+Shift+Space"
     # serde_json rejects a BOM; write strict UTF-8
     [System.IO.File]::WriteAllText($storeFile, ($prefs | ConvertTo-Json -Depth 8),
@@ -175,14 +192,10 @@ try {
         $quarantined = Test-Path (Join-Path (Split-Path $storeFile) "preferences.bak")
         throw "run A observed no flow state (viby pids=[$procs]; store quarantined=$quarantined; shortcut registration likely failed)"
     }
-    # The invariant is "release during load reaches Processing without any
-    # Recording state". The terminal Error is timing-dependent: a borderline
-    # capture passes validation and the silent decode then runs for minutes.
+    # A short hold still orders the activation signal before Processing; the
+    # terminal state depends on what the engine makes of 250 ms of audio.
     Assert-Order $runA.States @("Loading", "Processing") "run A"
-    if (($runA.States -join " -> ") -match "Recording") {
-        throw "post-release Recording state observed: $($runA.States -join ' -> ')"
-    }
-    Write-Output "run-a-loading-stop: PASS (release during load, no Recording)"
+    Write-Output "run-a-short-hold: PASS (Loading before Processing)"
 
     $proc = Start-Viby
     Start-Sleep -Seconds 10
@@ -190,10 +203,9 @@ try {
     Start-Sleep -Seconds 5
     $viby = $script:viby
     if ($viby) {
-        $connections = Get-NetTCPConnection -OwningProcess $viby.Id -ErrorAction SilentlyContinue
-        if ($connections) { throw "viby.exe held TCP connections during the flow" }
+        $count = Assert-EngineOnlyConnections $viby.Id $Endpoint "run B"
+        Write-Output "network-observation: ENGINE ONLY ($count connection(s) to $Endpoint)"
     }
-    Write-Output "network-observation: NO TCP CONNECTIONS"
     Wait-ForFinal 240
     Stop-Viby
     Start-Sleep -Seconds 1
@@ -272,6 +284,7 @@ try {
     Write-Output "run-d-close-during-processing: PASS (final discarded, exited, no final event)"
     Write-Output "`nSMOKE PASS"
 } finally {
+    Stop-ProofEngine $engineProcess
     Stop-Viby
     if ($storeExisted) {
         [System.IO.File]::WriteAllBytes($storeFile, $storeBackup)

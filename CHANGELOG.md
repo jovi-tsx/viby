@@ -9,6 +9,13 @@ numeric `MAJOR.MINOR.PATCH`, without suffixes. Maturity is a separate label.
 
 ### Added
 
+- Viby now sends dictation to a speech-to-text engine you run yourself: an
+  OpenAI-style HTTP request (also whisper.cpp's `/inference`), configured in
+  Options under **Engine and language**. The address must be on this PC, or on
+  your private network after you allow it; internet addresses, redirects and
+  proxies are refused.
+- The discard shortcut also cancels a take your engine is still processing.
+
 - A complete Portuguese brandbook covering strategy, archetype, product-discovery
   hypotheses and 56-color tonal scales with measured HSV/OKLCH/contrast values.
 - Editable software application mockups, transparent watermarks and dark/light
@@ -18,6 +25,13 @@ numeric `MAJOR.MINOR.PATCH`, without suffixes. Maturity is a separate label.
   including outlined signatures, monochrome applications, avatar and repository covers.
 - Locally bundled Manrope typography with its upstream license and source record.
 
+### Removed
+
+- The embedded Whisper engine and its model-file settings. Viby bundles,
+  downloads and starts no engine or model, and building it no longer needs
+  CMake, LLVM or libclang. Saved model paths are discarded; the language
+  setting is kept.
+
 ### Changed
 
 - Applied shared brand tokens, typography and the final signature to Options and
@@ -25,8 +39,7 @@ numeric `MAJOR.MINOR.PATCH`, without suffixes. Maturity is a separate label.
 - Clarified that the current prototype does not paste text, including in the
   confirmation copy and insertion settings.
 
-The app remains pre-alpha. This identity update does not implement dynamic
-engine connections or destination insertion.
+The app remains pre-alpha. Destination insertion is not implemented yet.
 
 ### Fixed
 

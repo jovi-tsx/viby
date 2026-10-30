@@ -22,7 +22,7 @@
 # ASCII only inside string literals: no BOM, so a multi-byte character in a
 # quoted string breaks the parse under Windows PowerShell.
 param(
-    [string]$ModelPath = "C:\openai-whisper\ggml-base-q5_1.bin",
+    [string]$Endpoint = "http://127.0.0.1:8080/inference",
     [int]$Repeats = 3,
     # Release the shortcut before clicking the X. The probe originally clicked
     # with Ctrl+Shift+Space still physically held, which no user does: a human
@@ -158,8 +158,8 @@ function Hot-Transient($cells, $baseline, $final, [int]$left, [int]$top) {
 
 function Write-Prefs {
     $prefs = Get-Content $storeFile -Raw | ConvertFrom-Json
-    $prefs.preferences.model.path = $ModelPath
-    $prefs.preferences.model.variant = "base-q5_1"
+    . (Join-Path $PSScriptRoot "lib-engine.ps1")
+    Set-EnginePrefs $prefs.preferences $Endpoint
     $prefs.preferences.shortcut = "Ctrl+Shift+Space"
     $prefs.preferences.microphone = $null
     $prefs.preferences.insertion | Add-Member -NotePropertyName confirm_before_insert `

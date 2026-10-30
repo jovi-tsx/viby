@@ -19,14 +19,15 @@
 #
 # Run from WSL:
 #   powershell.exe -ExecutionPolicy Bypass -File scripts\smoke-bar.ps1 `
-#       -ModelPath C:\openai-whisper\ggml-base-q5_1.bin [-Spoken]
+#       [-Endpoint http://127.0.0.1:8080/inference] [-StartEngine] [-Spoken]
 
 param(
-    [string]$ModelPath = "C:\openai-whisper\ggml-base-q5_1.bin",
-    [string]$Variant = "base-q5_1",
-    # A silence decode on `small` is slow enough that a cancellation teardown
-    # is observable; the busy run needs that window.
-    [string]$SlowModelPath = "C:\openai-whisper\ggml-small.bin",
+    # The user's engine (D23). It must already be running, unless
+    # -StartEngine is given: the user authorized that for M2b proof runs only.
+    [string]$Endpoint = "http://127.0.0.1:8080/inference",
+    [switch]$StartEngine,
+    [string]$EngineExe = "C:\openai-whisper\whisper-bin-x64-v1.9.2\Release\whisper-server.exe",
+    [string]$EngineModel = "C:\openai-whisper\ggml-base-q5_1.bin",
     [switch]$Spoken
 )
 
@@ -37,6 +38,8 @@ Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, Sy
 $AE = [System.Windows.Automation.AutomationElement]
 $CT = [System.Windows.Automation.ControlType]
 $root = $AE::RootElement
+. (Join-Path $PSScriptRoot "lib-engine.ps1")
+$engineProcess = $null
 
 $repo = Split-Path $PSScriptRoot -Parent
 $artifacts = Join-Path $repo "docs\plans\2026-08-13-local-desktop-dictation\artifacts\M3"
@@ -55,7 +58,8 @@ $webviewProfile = Join-Path $env:TEMP "viby-smoke-webview"
 
 try {
     if (-not (Test-Path $exe)) { throw "release executable not found: $exe (run cargo tauri build)" }
-    if (-not (Test-Path $ModelPath)) { throw "model file not found: $ModelPath" }
+    if ($StartEngine) { $engineProcess = Start-ProofEngine $Endpoint $EngineExe $EngineModel }
+    if (-not (Test-EngineListening $Endpoint)) { throw "no engine listens on $Endpoint; start it or pass -StartEngine" }
     $work = Get-WorkArea
     Note ("work-area: {0},{1} {2}x{3}" -f $work.Left, $work.Top,
         ($work.Right - $work.Left), ($work.Bottom - $work.Top))
@@ -106,9 +110,8 @@ try {
                 Set-Content (Join-Path $artifacts "uia-recording-$position.txt")
 
             if ($position -eq "center") {
-                $connections = Get-NetTCPConnection -OwningProcess $script:viby.Id -ErrorAction SilentlyContinue
-                if ($connections) { throw "viby.exe held TCP connections while the bar was live" }
-                Note "network-observation: NO TCP CONNECTIONS"
+                $count = Assert-EngineOnlyConnections $script:viby.Id $Endpoint "bar live"
+                Note "network-observation: ENGINE ONLY ($count connection(s) to $Endpoint)"
             }
 
             # S2: Cancel during capture discards everything and inserts nothing.
@@ -214,11 +217,7 @@ try {
     $busyLogged = $false
     $ordered = 0
     for ($attempt = 1; $attempt -le 5 -and -not $busySeen; $attempt++) {
-        Write-Prefs {
-            param($p)
-            $p.preferences.model.path = $SlowModelPath
-            $p.preferences.model.variant = "small"
-        }
+        Write-Prefs $null
         Start-Viby
         Hold-Down
         try {
@@ -342,26 +341,53 @@ try {
         Stop-Viby
     }
 
-    # --- C. missing local model (S3) ----------------------------------------
-    Write-Prefs { param($p) $p.preferences.model.path = $null }
+    # --- C. no engine (S3, D23) ----------------------------------------------
+    # C1: no endpoint saved. Refused before the microphone opens: a notice,
+    # no Loading state, no connection.
+    Write-Prefs { param($p) $p.preferences.engine.endpoint = "" }
     Start-Viby
     Hold-Down
     Start-Sleep -Milliseconds 900
     Hold-Up
-    if (-not (Wait-ForState "Error" 20)) { throw "the missing model did not end in an error state" }
     $bar = Wait-ForBar 10
-    $elements = Wait-ForName $bar "*no local Whisper model is configured*" "run C"
-    Assert-Name $elements "*Options*" "run C"
-    Assert-Name $elements "*Error*" "run C"
-    Assert-NoName $elements "*Listening*" "run C"
-    $connections = Get-NetTCPConnection -OwningProcess $script:viby.Id -ErrorAction SilentlyContinue
-    if ($connections) { throw "the missing-model error opened a connection" }
-    Assert-NoFinalDelivered "run C"
-    $shot = Capture "bar-error-missing-model.png" $bar
-    Note "capture-error-missing-model: $shot"
+    $elements = Wait-ForName $bar "*No speech engine is set*" "run C1"
+    Assert-Name $elements "*Options*" "run C1"
+    Assert-NoName $elements "*Listening*" "run C1"
+    if (Get-FlowStates) { throw "run C1: the refused activation still produced flow states" }
+    if (@(Get-NetTCPConnection -OwningProcess $script:viby.Id -ErrorAction SilentlyContinue |
+            Where-Object { $_.State -ne "Listen" -and $_.State -ne "Bound" }).Count) {
+        throw "run C1: the refused activation opened a connection"
+    }
+    Assert-NoFinalDelivered "run C1"
+    $shot = Capture "bar-no-engine.png" $bar
+    Note "capture-no-engine: $shot"
     ($elements | ForEach-Object { "$($_.Type)`t$($_.Name)" }) |
-        Set-Content (Join-Path $artifacts "uia-error-missing-model.txt")
-    Note "missing-model-error: PASS (actionable, local, no network)"
+        Set-Content (Join-Path $artifacts "uia-no-engine.txt")
+    Note "no-engine-refusal: PASS (before the microphone, no connection)"
+    Stop-Viby
+
+    # C2: an endpoint whose engine is not running. The take ends as soon as
+    # the activation check fails, with the start-the-engine message.
+    $port = (New-Object System.Net.Sockets.TcpListener([System.Net.IPAddress]::Loopback, 0))
+    $port.Start(); $deadPort = $port.LocalEndpoint.Port; $port.Stop()
+    $deadEndpoint = "http://127.0.0.1:$deadPort/inference"
+    Write-Prefs { param($p) $p.preferences.engine.endpoint = $deadEndpoint }
+    Start-Viby
+    Hold-Down
+    try {
+        if (-not (Wait-ForState "Error" 10)) { throw "run C2: a stopped engine did not end the take" }
+    } finally {
+        Hold-Up
+    }
+    $bar = Wait-ForBar 10
+    $elements = Wait-ForName $bar "*could not reach your speech engine*" "run C2"
+    Assert-Name $elements "*start it*" "run C2"
+    Assert-NoFinalDelivered "run C2"
+    $shot = Capture "bar-error-engine-stopped.png" $bar
+    Note "capture-error-engine-stopped: $shot"
+    ($elements | ForEach-Object { "$($_.Type)`t$($_.Name)" }) |
+        Set-Content (Join-Path $artifacts "uia-error-engine-stopped.txt")
+    Note "engine-stopped-error: PASS (take ended at the check, actionable)"
     Stop-Viby
 
     # --- D. unavailable microphone (S4) -------------------------------------
@@ -494,6 +520,7 @@ try {
 
     Note "`nSMOKE PASS"
 } finally {
+    Stop-ProofEngine $engineProcess
     Stop-Viby
     if ($animationsRestore -ne $null) { Set-Animations $animationsRestore }
     if ($storeExisted) { [System.IO.File]::WriteAllBytes($storeFile, $storeBackup) }

@@ -141,8 +141,9 @@ Note "uia-tree: $dump"
 $accessibilityTargets = @(
     @{ Type = $CT::Edit; Name = "Dictation shortcut" },
     @{ Type = $CT::ComboBox; Name = "Input device" },
-    @{ Type = $CT::ComboBox; Name = "Model" },
-    @{ Type = $CT::Edit; Name = "Local model path" },
+    @{ Type = $CT::Edit; Name = "Engine address" },
+    @{ Type = $CT::CheckBox; Name = "Allow an engine on my local network" },
+    @{ Type = $CT::Edit; Name = "Model name (optional)" },
     @{ Type = $CT::Edit; Name = "Language" },
     @{ Type = $CT::CheckBox; Name = "Send Enter after pasting (off by default)" },
     @{ Type = $CT::ComboBox; Name = "Bar position" },
@@ -248,34 +249,60 @@ if ($saveButton.Current.IsEnabled) { throw "Save stayed enabled after successful
 if (-not $savedStatusText) { throw "save status did not render exact 'Saved' copy" }
 Note "status-after-save: Saved; save-disabled-after-save: PASS"
 
- # Invalid local model URI stays on the model-path field and does not persist.
- $modelPathControl = Find-First $optionsWin $CT::Edit "Local model path"
- if (-not $modelPathControl) { throw "local model path control missing" }
- $modelPathControl.SetFocus()
- [System.Windows.Forms.SendKeys]::SendWait("^a")
- [System.Windows.Forms.SendKeys]::SendWait("https://example.com/model.bin")
- [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
- Start-Sleep -Milliseconds 300
- $saveButton.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
- Start-Sleep -Milliseconds 700
- $modelPathError = $optionsWin.FindAll(
+ # Engine and language card (D23): the local-network permission is off by
+ # default, refused endpoints stay on their own field and never persist, and
+ # an empty endpoint saves (R7, DESIGN).
+ $permission = Find-First $optionsWin $CT::CheckBox "Allow an engine on my local network"
+ if (-not $permission) { throw "local-network permission control missing" }
+ $toggle = $permission.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern)
+ if ($toggle.Current.ToggleState -ne [System.Windows.Automation.ToggleState]::Off) {
+     throw "the local-network permission is not off by default"
+ }
+ $permissionHint = $optionsWin.FindAll(
      [System.Windows.Automation.TreeScope]::Subtree,
      (New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, $CT::Text))) |
-     Where-Object { $_.Current.Name -match "local Windows path" }
- if (-not $modelPathError) { throw "invalid model path did not render field error" }
- if ((Get-Content $storeFile -Raw | ConvertFrom-Json).preferences.model.path -match "example\.com") {
-     throw "invalid model path was persisted"
+     Where-Object { $_.Current.Name -match "leaves this PC" }
+ if (-not $permissionHint) { throw "the local-network warning is not rendered" }
+ Note "local-network-permission: off by default, warning present"
+ $endpointControl = Find-First $optionsWin $CT::Edit "Engine address"
+ if (-not $endpointControl) { throw "engine address control missing" }
+ foreach ($case in @(
+         @{ Value = "http://8.8.8.8:8080"; Expect = "outside this PC"; Shot = "05-engine-public-refused.png" },
+         @{ Value = "http://192.168.1.5:8080"; Expect = "local network"; Shot = "05-engine-private-refused.png" },
+         @{ Value = "http://user:pw@127.0.0.1:8080"; Expect = "user name, password"; Shot = "05-engine-credentials-refused.png" })) {
+     $endpointControl.SetFocus()
+     [System.Windows.Forms.SendKeys]::SendWait("^a")
+     [System.Windows.Forms.SendKeys]::SendWait($case.Value)
+     [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
+     Start-Sleep -Milliseconds 300
+     $saveButton.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+     Start-Sleep -Milliseconds 900
+     $endpointError = $optionsWin.FindAll(
+         [System.Windows.Automation.TreeScope]::Subtree,
+         (New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, $CT::Text))) |
+         Where-Object { $_.Current.Name -match $case.Expect }
+     if (-not $endpointError) { throw "refused endpoint $($case.Value) did not render its field error" }
+     $focused = $AE::FocusedElement
+     if ($focused.Current.Name -ne "Engine address") {
+         throw "refused endpoint left focus on '$($focused.Current.Name)', not the engine address"
+     }
+     $stored = (Get-Content $storeFile -Raw | ConvertFrom-Json).preferences
+     if ($stored.engine -and $stored.engine.endpoint -eq $case.Value) { throw "refused endpoint $($case.Value) was persisted" }
+     Capture $case.Shot $optionsWin | Out-Null
+     Note "engine-endpoint-refused: PASS ($($case.Value) -> $($endpointError[0].Current.Name))"
  }
- Capture "05-model-path-error.png" $optionsWin | Out-Null
- Note "model-path-validation: PASS ($($modelPathError[0].Current.Name))"
- $modelPathControl.SetFocus()
+ $endpointControl.SetFocus()
  [System.Windows.Forms.SendKeys]::SendWait("^a")
  [System.Windows.Forms.SendKeys]::SendWait("{BACKSPACE}")
  [System.Windows.Forms.SendKeys]::SendWait("{TAB}")
  Start-Sleep -Milliseconds 300
  $saveButton.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
  Start-Sleep -Seconds 1
- if ($saveButton.Current.IsEnabled) { throw "Save stayed enabled after model path recovery" }
+ if ($saveButton.Current.IsEnabled) { throw "Save stayed enabled after saving an empty endpoint" }
+ if ((Get-Content $storeFile -Raw | ConvertFrom-Json).preferences.engine.endpoint -ne "") {
+     throw "an empty endpoint did not save"
+ }
+ Note "engine-endpoint-empty-save: PASS"
 
 
 $saved = Get-Content $storeFile -Raw | ConvertFrom-Json

@@ -1,7 +1,7 @@
 # Shared bar and flow helpers for the native bar smokes.
 # Extracted from smoke-bar.ps1 2026-09-23; dot-source, do not copy.
 # Requires: lib-tray.ps1 dot-sourced first (Note), and in scope $AE/$CT/$root,
-# $storeFile/$storeExisted, $ModelPath/$Variant, $exe, $logFile/$errFile,
+# $storeFile/$storeExisted, $Endpoint (lib-engine.ps1), $exe, $logFile/$errFile,
 # $webviewProfile, and $artifacts.
 
 # Nominal bar window, in CSS pixels, from tauri.conf.json, and the safe edge
@@ -57,8 +57,7 @@ function Set-Animations([bool]$on) {
 function Write-Prefs($mutate) {
     if (-not $storeExisted) { throw "no preferences store at $storeFile; run Viby once first" }
     $prefs = Get-Content $storeFile -Raw | ConvertFrom-Json
-    $prefs.preferences.model.path = $ModelPath
-    $prefs.preferences.model.variant = $Variant
+    Set-EnginePrefs $prefs.preferences $Endpoint
     $prefs.preferences.shortcut = "Ctrl+Shift+Space"
     # A store written before D16 has no discard shortcut; pin the default.
     $prefs.preferences | Add-Member -NotePropertyName discard_shortcut `

@@ -23,7 +23,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$Label,
     [int]$Sessions = 10,
-    [string]$ModelPath = "C:\openai-whisper\ggml-base-q5_1.bin"
+    [string]$Endpoint = "http://127.0.0.1:8080/inference"
 )
 $ErrorActionPreference = "Stop"
 
@@ -130,8 +130,8 @@ function Hot-Transient($cells, $baseline, $final) {
 
 function Write-Prefs {
     $prefs = Get-Content $storeFile -Raw | ConvertFrom-Json
-    $prefs.preferences.model.path = $ModelPath
-    $prefs.preferences.model.variant = "base-q5_1"
+    . (Join-Path $PSScriptRoot "lib-engine.ps1")
+    Set-EnginePrefs $prefs.preferences $Endpoint
     $prefs.preferences.shortcut = "Ctrl+Shift+Space"
     $prefs.preferences.microphone = $null
     $prefs.preferences.insertion | Add-Member -NotePropertyName confirm_before_insert `

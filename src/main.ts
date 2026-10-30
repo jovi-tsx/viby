@@ -127,7 +127,7 @@ function render(state: string, message?: string | null) {
 
   switch (state) {
     case "loading":
-      announce(stateText, "Loading local model…");
+      announce(stateText, "Starting…");
       break;
     case "recording":
       announce(stateText, "Listening");

@@ -29,7 +29,7 @@
 # PowerShell reads them as ANSI and a multi-byte character inside a quoted
 # string breaks the parse. Comments survive it.
 param(
-    [string]$ModelPath = "C:\openai-whisper\ggml-base-q5_1.bin",
+    [string]$Endpoint = "http://127.0.0.1:8080/inference",
     [ValidateSet("A", "B", "C", "control", "all")][string]$Scenario = "all"
 )
 $ErrorActionPreference = "Stop"
@@ -190,10 +190,10 @@ function Hot-Transient($cells, $baseline, $final, [int]$left, [int]$top) {
     }
 }
 
-function Write-Prefs([string]$model) {
+function Write-Prefs([string]$Endpoint) {
     $prefs = Get-Content $storeFile -Raw | ConvertFrom-Json
-    $prefs.preferences.model.path = $model
-    $prefs.preferences.model.variant = "base-q5_1"
+    . (Join-Path $PSScriptRoot "lib-engine.ps1")
+    Set-EnginePrefs $prefs.preferences $Endpoint
     $prefs.preferences.shortcut = "Ctrl+Shift+Space"
     $prefs.preferences.microphone = $null
     # The confirmation step is opt in and off by default (D14); without the
@@ -244,11 +244,11 @@ $results = [ordered]@{}
 # PowerShell function returns everything it did not capture, so the per-frame
 # lines would join the return value and every scenario would read as a
 # non-empty, therefore truthy, result.
-function Invoke-Scenario([string]$name, [string]$label, [string]$model, [bool]$expectDock, [scriptblock]$arm) {
+function Invoke-Scenario([string]$name, [string]$label, [string]$engineEndpoint, [bool]$expectDock, [scriptblock]$arm) {
     $backup = [System.IO.File]::ReadAllBytes($storeFile)
     $viby = $null
     try {
-        Write-Prefs $model
+        Write-Prefs $engineEndpoint
         if (Get-Process viby -ErrorAction SilentlyContinue) { throw "viby is running" }
         $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = "--force-renderer-accessibility"
         $env:WEBVIEW2_USER_DATA_FOLDER = Join-Path $env:TEMP "viby-teardown-webview"
@@ -359,7 +359,7 @@ function Invoke-Scenario([string]$name, [string]$label, [string]$model, [bool]$e
 if ($Scenario -in @("B", "all")) {
     # Error linger, 6 s: an unreadable model path fails the flow on the first
     # press. No speech, no model load, and the widest window of the three.
-    Invoke-Scenario "B-error" "B error linger" "C:\viby-no-such-model.bin" $true {
+    Invoke-Scenario "B-error" "B error linger" "http://127.0.0.1:9/inference" $true {
         Hold-Down
         Start-Sleep -Milliseconds 400
         Hold-Up
@@ -374,7 +374,7 @@ if ($Scenario -in @("C", "all")) {
     # Notice linger, 1.6 s: discard mid-take, then press again while the worker
     # is still tearing down. The refusal shows the dock without changing state,
     # so `on_close_requested` still answers ExitClean.
-    Invoke-Scenario "C-notice" "C notice linger" $ModelPath $true {
+    Invoke-Scenario "C-notice" "C notice linger" $Endpoint $true {
         Hold-Down
         Start-Sleep -Seconds 2
         Hold-Up
@@ -389,7 +389,7 @@ if ($Scenario -in @("C", "all")) {
 if ($Scenario -in @("A", "all")) {
     # Outcome linger, 1.4 s, the tightest of the three and the one that needs a
     # delivered result. Silence produces none, so expect INCONCLUSIVE unattended.
-    Invoke-Scenario "A-outcome" "A outcome linger" $ModelPath $true {
+    Invoke-Scenario "A-outcome" "A outcome linger" $Endpoint $true {
         Hold-Down
         Start-Sleep -Seconds 3
         Hold-Up
@@ -401,7 +401,7 @@ if ($Scenario -in @("A", "all")) {
 if ($Scenario -in @("control", "all")) {
     # Control: Idle, dock hidden, nothing on screen to tear down. A FAIL here
     # means the probe is measuring something other than the dock.
-    Invoke-Scenario "control" "control hidden dock" $ModelPath $false {
+    Invoke-Scenario "control" "control hidden dock" $Endpoint $false {
         Open-MenuFast
     }
 }

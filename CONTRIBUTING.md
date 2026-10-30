@@ -37,14 +37,15 @@ are intentionally excluded from Git.
 
 Run UI smoke checks on an available Windows desktop. Some scenarios change
 preferences temporarily; inspect the script and its cleanup before running it.
-Spoken checks need an explicit local model path and a real microphone.
+Spoken checks need a running local speech-to-text engine and a real microphone;
+`scripts/smoke-engine.ps1` exercises the engine path without either.
 Narrator and 200% scaling are not exercised by the existing smoke suite.
 
 ## Reporting a problem
 
 Include the Windows version, Viby source revision, relevant steps, and whether
 the problem concerns capture, transcription, shortcuts, UI, or insertion.
-Remove personal text, model paths, and desktop details from reports.
+Remove personal text, engine addresses, and desktop details from reports.
 
 ## Licensing
 

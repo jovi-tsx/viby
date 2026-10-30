@@ -10,7 +10,7 @@
 # or WS_DLGFRAME, or WS_BORDER - shows up as a change in the log.
 #
 # ASCII only inside string literals.
-param([string]$ModelPath = "C:\openai-whisper\ggml-base-q5_1.bin")
+param([string]$Endpoint = "http://127.0.0.1:8080/inference")
 $ErrorActionPreference = "Stop"
 
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing, System.Windows.Forms
@@ -119,8 +119,8 @@ $backup = [System.IO.File]::ReadAllBytes($storeFile)
 $viby = $null
 try {
     $prefs = Get-Content $storeFile -Raw | ConvertFrom-Json
-    $prefs.preferences.model.path = $ModelPath
-    $prefs.preferences.model.variant = "base-q5_1"
+    . (Join-Path $PSScriptRoot "lib-engine.ps1")
+    Set-EnginePrefs $prefs.preferences $Endpoint
     $prefs.preferences.shortcut = "Ctrl+Shift+Space"
     $prefs.preferences.microphone = $null
     $prefs.preferences.insertion | Add-Member -NotePropertyName confirm_before_insert `

@@ -1,6 +1,3 @@
-if (-not $env:LIBCLANG_PATH) {
-    $env:LIBCLANG_PATH = 'C:\Program Files\LLVM\bin'
-}
 Push-Location (Join-Path (Split-Path $PSScriptRoot -Parent) 'src-tauri')
 try {
     Write-Output 'Running Rust unit tests...'
