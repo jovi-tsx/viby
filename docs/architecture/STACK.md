@@ -1,25 +1,22 @@
 # Initial stack
 
-> **Scope:** this document describes the embedded Whisper prototype. The
-> product direction is a configurable bridge to user-managed local AI;
-> see [target architecture](../../README.md#how-it-works). The engine interface
-> and transport contract still need implementation.
+> **Scope:** target stack after milestone M2b ([ADR 0002](../adrs/0002-user-managed-local-engine.md)).
+> Until M2b lands, the code still embeds whisper.cpp through `whisper-rs`.
 
-The application will be a Tauri 2 application with a Rust backend and a local
-web interface. It exposes no server, public API, or network traffic during
-normal use.
+The application is a Tauri 2 application with a Rust backend and a local web
+interface. It exposes no server or public API. Its only connections are
+requests to the speech-to-text engine the user runs and configures, on this PC
+or on a private network the user explicitly allowed.
 
 | Layer | Choice | Reason |
 |---|---|---|
 | Desktop host | Tauri 2 + Rust | Transparent window, tray, permissions, and low-overhead Windows distribution. |
-| Transcription | whisper.cpp via `whisper-rs` | Local Whisper inference without a Python service or remote API. |
+| Transcription | User-run engine over HTTP (OpenAI-shaped multipart, `{text}` reply) | Viby stays agnostic to the engine and ships no model; see spec R3/R3a. |
 | Capture | CPAL/WASAPI | Microphone access in the native process and level measurement for the waveform. |
 | Insertion | Clipboard + Windows keyboard events | Terminal-compatible flow, including WSL, without coupling to oh-my-pi. |
-| Preferences | Local app storage | Persist only non-sensitive settings and the model path. |
+| Preferences | Local app storage | Persist only non-sensitive settings, including the engine endpoint and optional model name; no credentials. |
 
-The reference default is a quantized multilingual Whisper model for the CPU.
-The concrete choice between `base` and `small` will be measured on the machine
-during the first milestone; an English-only model will not be the default.
+Viby recommends no model; which engine and model run is the user's choice.
 
 ## Hybrid development workflow
 

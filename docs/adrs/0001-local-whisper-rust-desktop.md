@@ -1,9 +1,9 @@
 # ADR 0001 — Tauri/Rust with local whisper.cpp
 
-> **Status:** records the architecture of the existing embedded prototype.
-> The newer product direction is a bridge to user-managed local AI; see
-> [the README](../../README.md#how-it-works). A replacement engine-integration
-> contract is pending review and implementation.
+> **Status:** superseded for transcription by
+> [ADR 0002](0002-user-managed-local-engine.md) (2026-10-30). The Tauri/Rust
+> host, capture, and insertion decisions below still stand; the embedded
+> whisper.cpp decision describes the prototype that milestone M2b removes.
 
 ## Context
 
