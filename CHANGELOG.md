@@ -28,6 +28,11 @@ numeric `MAJOR.MINOR.PATCH`, without suffixes. Maturity is a separate label.
 The app remains pre-alpha. This identity update does not implement dynamic
 engine connections or destination insertion.
 
+### Fixed
+
+- Disabled optional npm caching in CI after cache transfer limits prevented the
+  configured source checks from starting. The checks and tool versions are unchanged.
+
 ## [0.0.1] - 2026-10-28
 
 **Stage: Pre-alpha. Distribution: source-only snapshot.**
