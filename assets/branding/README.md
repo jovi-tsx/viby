@@ -3,6 +3,8 @@
 One approved identity: green rounded square with waveform V and typing cursor
 cut out. Symbol finalized 2026-10-28; expanded system approved 2026-10-29.
 
+- [Complete brandbook (Portuguese, 36-page PDF)](brandbook/viby-brandbook.pdf) — strategy, archetype, 56-color scales and software application mocks.
+- [Brandbook assets and export instructions](brandbook/README.md).
 - [Brand guide](brand-guide.md) — positioning, voice, color, type and usage.
 - [Visual brand sheet](brand-sheet.html) — open locally or through the dev server.
 - [Download the full kit](viby-brand-kit.zip).

@@ -126,11 +126,13 @@ manifest = {
 (BRAND / "exports.json").write_text(json.dumps(manifest, indent=2) + "\n")
 # The ZIP is an intentional downloadable deliverable, not another identity.
 # Byte-stable timestamps make regeneration auditable.
-names = sorted(p for p in BRAND.iterdir() if p.is_file() and p.suffix in {".svg", ".png", ".ai", ".md", ".css", ".html", ".json"})
+names = sorted(p for p in BRAND.rglob("*") if p.is_file() and p.suffix in {".svg", ".png", ".ai", ".md", ".css", ".html", ".json", ".pdf", ".csv"})
 with zipfile.ZipFile(BRAND / "viby-brand-kit.zip", "w", zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
-    items = [(p, Path("branding") / p.name) for p in names]
+    items = [(p, Path("branding") / p.relative_to(BRAND)) for p in names]
     items += [(p, Path("fonts/manrope") / p.name) for p in sorted(FONTS.iterdir()) if p.is_file()]
     items += [(ROOT / "LICENSE", Path("LICENSE"))]
+    for name in ["icon.ico", "32x32.png", "128x128.png", "128x128@2x.png"]:
+        items.append((ROOT / "src-tauri/icons" / name, Path("native/windows") / name))
     for source, target in items:
         info = zipfile.ZipInfo(target.as_posix(), (2026, 10, 29, 0, 0, 0))
         info.compress_type = zipfile.ZIP_DEFLATED

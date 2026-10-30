@@ -9,6 +9,11 @@ numeric `MAJOR.MINOR.PATCH`, without suffixes. Maturity is a separate label.
 
 ### Added
 
+- A complete Portuguese brandbook covering strategy, archetype, product-discovery
+  hypotheses and 56-color tonal scales with measured HSV/OKLCH/contrast values.
+- Editable software application mockups, transparent watermarks and dark/light
+  wallpapers in 4K desktop and portrait formats, included in the existing brand kit.
+
 - A complete Viby brand guide, visual sheet and downloadable vector/raster kit,
   including outlined signatures, monochrome applications, avatar and repository covers.
 - Locally bundled Manrope typography with its upstream license and source record.

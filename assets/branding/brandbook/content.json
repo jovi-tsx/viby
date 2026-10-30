@@ -1,0 +1,604 @@
+{
+  "edition": "01",
+  "date": "2026-10-30",
+  "language": "pt-BR",
+  "archetype": {
+    "primary": "Companheiro / Cara Comum (Everyperson)",
+    "support": "Criador",
+    "status": "creative brand strategy, not psychometric assessment"
+  },
+  "sources": [
+    {
+      "label": "Viby / código e documentação",
+      "url": "https://github.com/jovi-tsx/viby"
+    },
+    {
+      "label": "Carol S. Pearson / sistema de arquétipos",
+      "url": "https://carolspearson.com/about/the-pearson-12-archetype-system-human-development-and-evolution"
+    },
+    {
+      "label": "W3C / CSS Color 4",
+      "url": "https://www.w3.org/TR/css-color-4/"
+    },
+    {
+      "label": "W3C / WCAG 2.2, contraste mínimo",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html"
+    },
+    {
+      "label": "Manrope / fonte e licença",
+      "url": "https://github.com/googlefonts/manrope"
+    }
+  ],
+  "pages": [
+    {
+      "kind": "cover",
+      "title": "Sua voz.\nSuas palavras.",
+      "section": "Brandbook",
+      "text": "Estratégia, identidade e aplicações para um produto que faz a ponte entre fala e escrita.",
+      "note": "Edição 01 · Outubro de 2026"
+    },
+    {
+      "kind": "contents",
+      "title": "Uma identidade que\nacompanha o trabalho.",
+      "section": "Como usar",
+      "items": [
+        [
+          "Estratégia e descoberta",
+          "03–09",
+          "Essência, público, arquétipo, personalidade e voz."
+        ],
+        [
+          "Sistema visual",
+          "10–25",
+          "Marca, escalas de cor, contraste, tipografia e movimento."
+        ],
+        [
+          "Aplicações",
+          "26–33",
+          "Marca d’água, wallpapers e produto no desktop."
+        ],
+        [
+          "Próximos passos",
+          "34–36",
+          "Validação, governança, arquivos e fontes."
+        ]
+      ],
+      "note": "Guia para decisões consistentes. Os mockups de funcionalidades futuras são identificados como conceitos."
+    },
+    {
+      "kind": "platform",
+      "section": "Estratégia / essência",
+      "title": "Dê espaço ao\nseu raciocínio.",
+      "intro": "Viby aproxima a fala da escrita no Windows. A tecnologia fica nos bastidores; a pessoa mantém o controle do que quer dizer.",
+      "items": [
+        [
+          "Propósito",
+          "Reduzir a distância entre uma ideia falada e um texto utilizável."
+        ],
+        [
+          "Promessa",
+          "Uma interação simples e calma para escrever com a voz, com controle sobre o ambiente local."
+        ],
+        [
+          "Posicionamento",
+          "Para quem trabalha com texto no Windows e opera sua própria IA local, Viby é a ponte de interação entre a fala e a escrita."
+        ],
+        [
+          "Provas e limites",
+          "Atalhos, captura, interface e protótipo local já existem. Conexão dinâmica, inserção segura e instalador ainda estão em desenvolvimento."
+        ]
+      ],
+      "note": "Descritor internacional: A Windows dictation bridge for your local AI."
+    },
+    {
+      "kind": "cards",
+      "section": "Product discovery / hipóteses",
+      "title": "Três trabalhos.\nUm mesmo fluxo.",
+      "intro": "Segmentos orientados por contexto, não por estereótipos. São hipóteses de descoberta extraídas do propósito do produto; ainda precisam ser testadas.",
+      "items": [
+        [
+          "Escrever sem perder o fio",
+          "Quando uma ideia vem mais rápido que a digitação, quero colocá-la em palavras sem interromper meu raciocínio.",
+          "Notas, rascunhos, mensagens e documentação."
+        ],
+        [
+          "Alternar entre pensar e executar",
+          "Quando trabalho entre editor, terminal e navegador, quero falar um trecho e continuar no contexto em que já estava.",
+          "O foco original e a previsibilidade importam."
+        ],
+        [
+          "Escolher meu próprio ambiente",
+          "Quando já opero uma IA local compatível, quero usar o Viby como interface, sem trocar meu motor ou criar outra conta.",
+          "Autonomia é parte da proposta, não decoração."
+        ]
+      ],
+      "note": "Sem entrevistas executadas nesta etapa. Evitar afirmar demanda, preferência ou ganho de produtividade como dado medido."
+    },
+    {
+      "kind": "archetype",
+      "section": "Estratégia / arquétipo",
+      "title": "Do seu lado.\nCom a sua voz.",
+      "intro": "Arquétipo principal: Companheiro / Cara Comum (Everyperson). Arquétipo de apoio: Criador.",
+      "items": [
+        [
+          "Companheiro",
+          "Motivação: proximidade e autonomia cotidiana. A marca simplifica, orienta e respeita a forma de trabalhar de cada pessoa.",
+          "Na prática: linguagem familiar, previsibilidade e uma presença discreta."
+        ],
+        [
+          "Criador",
+          "Motivação: dar forma às ideias. A pessoa é autora; o Viby ajuda a transformar expressão em escrita.",
+          "Na prática: ferramentas flexíveis, arquivos abertos e respeito pela voz original."
+        ]
+      ],
+      "note": "Uso editorial de arquétipos inspirado no framework de Carol S. Pearson. É uma escolha de posicionamento, não uma avaliação psicológica ou pesquisa de público."
+    },
+    {
+      "kind": "pairs",
+      "section": "Estratégia / personalidade",
+      "title": "Acolhedor sem excesso.\nPreciso sem frieza.",
+      "intro": "A personalidade aparece na decisão pequena: o nome de um botão, o espaço de um campo e o que acontece depois de um erro.",
+      "items": [
+        [
+          "Próximo",
+          "Fale como uma ferramenta útil que está ao lado da pessoa.",
+          "Evite intimidade forçada, diminutivos e excesso de exclamações."
+        ],
+        [
+          "Claro",
+          "Nomeie uma ação, um estado e o próximo passo.",
+          "Evite linguagem vaga, metáforas em controles e jargão desnecessário."
+        ],
+        [
+          "Discreto",
+          "Dê destaque à fala e ao trabalho, não ao aplicativo.",
+          "Evite efeitos contínuos, ruído visual e interrupções de celebração."
+        ],
+        [
+          "Independente",
+          "A escolha do motor local pertence ao usuário.",
+          "Evite fazer de um fornecedor de IA a identidade do produto."
+        ]
+      ]
+    },
+    {
+      "kind": "manifesto",
+      "section": "Estratégia / narrativa",
+      "title": "Você traz a ideia.\nO Viby abre espaço.",
+      "paragraphs": [
+        "Uma fala pode começar incompleta. Uma ideia pode mudar no meio da frase. Escrever com a voz não precisa virar uma experiência complicada.",
+        "O Viby existe para aproximar essas duas formas de expressão. Um gesto reconhecível, um retorno claro e a liberdade de continuar no próprio ritmo.",
+        "A marca não promete escrever por você. Ela ajuda a sua voz a encontrar lugar no seu trabalho."
+      ],
+      "note": "Linha principal: Sua voz. Suas palavras. / Your voice. Your words."
+    },
+    {
+      "kind": "voice",
+      "section": "Estratégia / voz e tom",
+      "title": "Poucas palavras.\nPróximos passos claros.",
+      "intro": "A voz permanece humana e direta. O tom muda conforme a situação, sem perder precisão.",
+      "items": [
+        [
+          "Orientação",
+          "Escolha o microfone que você quer usar.",
+          "Útil e neutro."
+        ],
+        [
+          "Confirmação",
+          "Alterações salvas.",
+          "Calmo; sem comemoração desproporcional."
+        ],
+        [
+          "Erro",
+          "Não encontramos um microfone. Conecte um e tente novamente.",
+          "Explique o problema e uma ação possível."
+        ],
+        [
+          "Conexão futura",
+          "Não foi possível conectar. Verifique se o motor local está em execução.",
+          "Exemplo para a integração planejada."
+        ],
+        [
+          "Inserção futura",
+          "Texto inserido.",
+          "Só mostrar depois da entrega real confirmada."
+        ]
+      ],
+      "note": "Não usar “mágica de IA”, “funciona com qualquer IA” ou mensagens de sucesso sem confirmação do resultado. Em inglês: Save changes / Changes saved."
+    },
+    {
+      "kind": "flow",
+      "section": "Produto / papéis e limites",
+      "title": "Uma ponte.\nCada parte no seu lugar.",
+      "intro": "O Viby coordena a interação. O motor local compatível recebe áudio e devolve texto.",
+      "items": [
+        [
+          "Pessoa",
+          "Decide o que dizer, quando começar e quando descartar."
+        ],
+        [
+          "Viby",
+          "Cuida de atalhos, captura, estados e coordenação da entrega."
+        ],
+        [
+          "Motor local",
+          "Cuida do modelo e da inferência de fala para texto."
+        ],
+        [
+          "Aplicação de destino",
+          "É o contexto onde a pessoa pretende continuar escrevendo."
+        ]
+      ],
+      "note": "Arquitetura alvo. A versão 0.0.1 é pré-alpha, com Whisper embutido; conexão dinâmica e inserção automática não estão implementadas. Os próximos mockups não alteram esse status."
+    },
+    {
+      "kind": "logo",
+      "section": "Sistema / símbolo",
+      "title": "Uma onda em V.\nUm cursor à espera.",
+      "intro": "O V reconhecível nasce do movimento de uma onda sonora. O traço vertical liga esse gesto ao lugar onde a escrita acontece.",
+      "items": [
+        [
+          "Geometria aprovada",
+          "Quadrado arredondado, onda e cursor vazados. Não reconstruir curvas por aproximação."
+        ],
+        [
+          "Vazado real",
+          "O fundo atravessa os recortes. A marca não depende de um preenchimento preto interno."
+        ],
+        [
+          "Fonte de verdade",
+          "O SVG aprovado gera as aplicações. O arquivo Illustrator preserva a edição vetorial."
+        ]
+      ],
+      "note": "A construção mostrada é um diagrama de uso, não uma alegação de proporção áurea ou uma nova geometria."
+    },
+    {
+      "kind": "signatures",
+      "section": "Sistema / assinaturas",
+      "title": "Uma marca.\nTrês modos de aparecer.",
+      "intro": "Símbolo para espaços compactos; assinatura horizontal para identificação; nome isolado quando o contexto já está claro.",
+      "note": "Em fundos claros: símbolo verde e nome em tinta. Em fundos escuros: símbolo verde e nome em papel. Monocromia é uma aplicação da mesma identidade."
+    },
+    {
+      "kind": "clearspace",
+      "section": "Sistema / respiro e redução",
+      "title": "Espaço também\nfaz parte da marca.",
+      "intro": "S é a largura visível do símbolo. Reserve no mínimo S/4 ao redor da assinatura completa. O preenchimento do arquivo não substitui o respiro no layout.",
+      "items": [
+        [
+          "Símbolo",
+          "24 px no conteúdo da interface; abaixo disso, usar apenas os tamanhos nativos gerados para tray e favicon."
+        ],
+        [
+          "Assinatura",
+          "120 px de largura como ponto de partida digital. Abaixo desse tamanho, preferir o símbolo."
+        ],
+        [
+          "Impressão",
+          "Começar em 8 mm para o símbolo ou 28 mm para a assinatura e conferir a prova no suporte real."
+        ]
+      ],
+      "note": "Não deformar para caber. Ajustar o tamanho ou escolher a assinatura adequada."
+    },
+    {
+      "kind": "misuse",
+      "section": "Sistema / uso incorreto",
+      "title": "Preservar é\nmais forte que enfeitar.",
+      "items": [
+        [
+          "Não esticar",
+          "Manter proporções em qualquer exportação."
+        ],
+        [
+          "Não fechar o vazado",
+          "Preservar onda, cursor e exterior transparentes."
+        ],
+        [
+          "Não adicionar efeitos",
+          "Sem brilho, relevo ou sombra incorporada à logo."
+        ],
+        [
+          "Não trocar a identidade",
+          "Não substituir Viby pelo nome do motor de IA."
+        ]
+      ],
+      "note": "Fundos complexos exigem uma área de apoio calma. Não recolorir partes isoladas, girar a marca nem aplicar uma segunda máscara de cantos."
+    },
+    {
+      "kind": "icon",
+      "section": "Sistema / app icon",
+      "title": "Reconhecível,\nmesmo pequeno.",
+      "intro": "O símbolo é o ícone do aplicativo. Não adicionar letras, molduras extras, selo de versão ou um segundo arredondamento.",
+      "note": "24, 32, 48, 64, 128 e 256 px: demonstração de redução. Tray/favicons têm limitações próprias; usar os derivados existentes. A moldura do sistema operacional não faz parte da logo."
+    },
+    {
+      "kind": "palette-overview",
+      "section": "Cor / arquitetura",
+      "title": "Um verde vivo.\nUma base que respira.",
+      "intro": "A cor principal orienta a atenção. Os neutros sustentam a leitura. Cores de estado só aparecem quando existe um significado funcional.",
+      "items": [
+        [
+          "Verde",
+          "Identidade, ação principal e sinal de captura."
+        ],
+        [
+          "Neutros",
+          "Superfícies, texto, contornos e espaço de descanso."
+        ],
+        [
+          "Âmbar, coral e azul",
+          "Atenção, erro e informação. Não competem com o verde pela assinatura."
+        ]
+      ],
+      "note": "Ponto de partida para composições: predominância de neutros, verde como destaque e cores de estado com parcimônia. Não é uma proporção rígida ou dado de pesquisa. Uso digital em sRGB; impressão exige perfil ICC e prova. Não há equivalência Pantone automática."
+    },
+    {
+      "kind": "ramp",
+      "family": "green",
+      "section": "Cor / escala principal",
+      "title": "Verde Viby / 50–950",
+      "intro": "O nível 500 preserva #1DDD66. O 400 preserva o hover atual; o 700 oferece verde de leitura em superfícies claras."
+    },
+    {
+      "kind": "ramp",
+      "family": "neutral",
+      "section": "Cor / escala de apoio",
+      "title": "Neutros / papel à tinta",
+      "intro": "Uma base de cinzas com viés verde, mantendo os neutros existentes. O nível adicional 925 preserva a tinta #111713."
+    },
+    {
+      "kind": "ramp",
+      "family": "amber",
+      "section": "Cor / estado de atenção",
+      "title": "Âmbar / 50–950",
+      "intro": "Use para uma condição que pede atenção e permite seguir com uma escolha consciente. Não sinaliza erro irreversível."
+    },
+    {
+      "kind": "ramp",
+      "family": "coral",
+      "section": "Cor / estado de erro",
+      "title": "Coral / 50–950",
+      "intro": "Use para falhas e ações de descarte. O nível 300 preserva o erro atual #FF9B91; uma mensagem sempre acompanha a cor."
+    },
+    {
+      "kind": "ramp",
+      "family": "sky",
+      "section": "Cor / estado de informação",
+      "title": "Azul / 50–950",
+      "intro": "Use para informação contextual. Não usar como nova cor de marca, ação principal ou indicação de sucesso."
+    },
+    {
+      "kind": "contrast",
+      "section": "Cor / acessibilidade",
+      "title": "Cor bonita.\nLeitura comprovada.",
+      "intro": "Contraste é calculado entre cores de primeiro plano e fundo, em sRGB e opacidade total. Tamanho, peso e transparência também afetam o uso real.",
+      "note": "Texto comum: pelo menos 4,5:1. Texto grande e limites essenciais de controles: 3:1 quando aplicável. As marcações mostram a finalidade de cada par; não são uma certificação de toda a interface. Fonte: WCAG 2.2."
+    },
+    {
+      "kind": "semantic",
+      "section": "Cor / aplicação no produto",
+      "title": "O mesmo significado,\nem qualquer superfície.",
+      "intro": "As escalas fornecem matéria-prima. Os papéis semânticos dizem onde usar cada cor. Os exemplos claros são orientações de marca; o app atual continua dark-only.",
+      "note": "HSV registra matiz, saturação e valor/brilho. OKLCH organiza luminosidade perceptual e croma. As rampas reduzem croma nos extremos e preservam os acentos aprovados; não são simples passos iguais de HSV."
+    },
+    {
+      "kind": "type",
+      "section": "Tipografia / voz visual",
+      "title": "Aberta para ler.\nClara para agir.",
+      "intro": "Manrope combina curvas abertas e leitura confortável com uma presença discreta no desktop.",
+      "items": [
+        [
+          "Expressão",
+          "600–700 · títulos grandes · entrelinha compacta, sem esmagar as palavras."
+        ],
+        [
+          "Interface",
+          "450–550 · 14 px de partida para corpo e rótulos; 13 px para ajuda."
+        ],
+        [
+          "Utilidade",
+          "Monoespaçada nativa para caminhos e atalhos. Usar com moderação."
+        ]
+      ],
+      "note": "A fonte é distribuída localmente sob SIL Open Font License 1.1. Assinaturas vetoriais usam contornos e não exigem fonte instalada."
+    },
+    {
+      "kind": "layout",
+      "section": "Forma / ritmo",
+      "title": "Calma é uma\nquestão de espaço.",
+      "intro": "Unidade de espaçamento de 4 px. Usar 8, 12, 16, 24 e 32 px para construir agrupamentos reconhecíveis.",
+      "items": [
+        [
+          "Hierarquia",
+          "Uma ação principal por contexto; grupos claros antes de decoração."
+        ],
+        [
+          "Forma",
+          "Cards com raio de 16 px, controles de 10 px e cápsula no dock. O ícone mantém seus próprios cantos."
+        ],
+        [
+          "Layout",
+          "Uma coluna em preferências, rótulos acima dos campos e ajuda próxima da escolha."
+        ],
+        [
+          "Foco",
+          "Contorno visível e margem para navegar por teclado sem perder a posição."
+        ]
+      ]
+    },
+    {
+      "kind": "motion",
+      "section": "Movimento / comportamento",
+      "title": "Movimento que\nexplica o estado.",
+      "items": [
+        [
+          "Ouvindo",
+          "A onda acompanha o nível real do microfone."
+        ],
+        [
+          "Processando",
+          "O movimento sinaliza trabalho; não deve parecer captura de áudio."
+        ],
+        [
+          "Aguardando decisão",
+          "Controles claros para aceitar ou descartar; sem áudio fictício."
+        ],
+        [
+          "Movimento reduzido",
+          "Trocar animação por medidor discreto e preservar o significado."
+        ]
+      ],
+      "note": "A logo estática não pisca. Evitar celebrações, brilhos e movimento de fundo em preferências. O esquema de alto contraste do Windows tem prioridade."
+    },
+    {
+      "kind": "watermark-rules",
+      "section": "Aplicações / marca d’água",
+      "title": "Presença leve.\nConteúdo em primeiro lugar.",
+      "intro": "A marca d’água identifica autoria sem disputar leitura. É adequada a demos, documentos de versão e apresentações da comunidade.",
+      "items": [
+        [
+          "Composição",
+          "Usar assinatura monocromática no rodapé ou em uma área livre. Respeitar respiro e preservar o vazado."
+        ],
+        [
+          "Intensidade",
+          "Ponto de partida: 8–12% em superfície clara e 12–18% em escura. Ajustar após uma prova real."
+        ],
+        [
+          "Restrição",
+          "Não colocar atrás de texto, erro, legenda, campo, cursor ou controle interativo."
+        ]
+      ],
+      "note": "Marca d’água é decorativa e não carrega instrução essencial. Sua baixa opacidade não é uma combinação aprovada para texto funcional."
+    },
+    {
+      "kind": "watermark-mock",
+      "section": "Aplicações / documentação",
+      "title": "Autoria sem\ninterromper a leitura.",
+      "intro": "Exemplo em notas de versão: assinatura pequena e uma marca d’água de apoio na área vazia, fora do bloco de texto.",
+      "asset": "applications/viby-watermark-application.svg",
+      "note": "Mockup editorial. O arquivo transparente pode ser usado em documentos e capturas produzidos pelo projeto."
+    },
+    {
+      "kind": "wallpaper",
+      "section": "Aplicações / wallpapers",
+      "title": "Um desktop\ncom espaço para pensar.",
+      "intro": "Duas superfícies, uma identidade. A onda vira grafismo de apoio; a assinatura permanece inteira e discreta.",
+      "note": "Arquivos entregues em 3840 × 2160 e 1440 × 3120. As versões desktop preservam a área esquerda para ícones e a área inferior para a barra do sistema."
+    },
+    {
+      "kind": "desktop",
+      "section": "Aplicações / experiência Windows",
+      "title": "Aparecer no momento.\nSair do caminho depois.",
+      "intro": "A marca acompanha a ação no desktop sem transformar o Viby em uma janela de conversa.",
+      "asset": "applications/viby-desktop-mock.svg",
+      "note": "Mockup de contexto para a arquitetura alvo. Não comprova inserção automática nem compatibilidade já implementada com motores externos."
+    },
+    {
+      "kind": "options",
+      "section": "Aplicações / preferências",
+      "title": "Configurar com\nclareza e controle.",
+      "intro": "A identidade organiza a interface: assinatura, superfície quieta, rótulos claros e uma ação principal.",
+      "asset": "applications/viby-options-mock.svg",
+      "note": "Conceito visual da configuração de motor local. A conexão dinâmica ainda não existe na versão 0.0.1; este mockup não foi aplicado ao código do app."
+    },
+    {
+      "kind": "tray",
+      "section": "Aplicações / ícone no sistema",
+      "title": "Pequeno na tela.\nFácil de encontrar.",
+      "intro": "O ícone identifica o processo em execução. O menu permanece mínimo e a assinatura completa fica nas superfícies com espaço.",
+      "asset": "applications/viby-tray-mock.svg",
+      "note": "Aplicação conceitual em uma barra de sistema genérica. Menu preservado: Options… e Close."
+    },
+    {
+      "kind": "github",
+      "section": "Aplicações / open source",
+      "title": "Uma presença\naberta e consistente.",
+      "intro": "Capa do repositório, avatar e imagem de compartilhamento formam um conjunto. A comunicação mantém o estágio pré-alpha visível.",
+      "asset": "applications/viby-github-mock.svg",
+      "note": "O README já usa a identidade. A imagem de social preview é um arquivo pronto; sua configuração no GitHub é uma etapa separada."
+    },
+    {
+      "kind": "installer",
+      "section": "Aplicações / instalação e demo",
+      "title": "Começar bem\ntambém é marca.",
+      "intro": "A primeira experiência deve explicar o papel do app e o que depende do motor local. Nenhum modelo é apresentado como proprietário do Viby.",
+      "asset": "applications/viby-installer-mock.svg",
+      "note": "Aplicação conceitual para um instalador futuro. A release 0.0.1 contém somente código-fonte e não oferece este instalador."
+    },
+    {
+      "kind": "discovery",
+      "section": "Product discovery / próxima rodada",
+      "title": "Validar a experiência,\nnão só a estética.",
+      "intro": "Plano sugerido para a próxima rodada de descoberta. As atividades abaixo ainda não foram realizadas.",
+      "items": [
+        [
+          "Entender o contexto",
+          "Conversar com 5–7 pessoas que já usam texto no Windows. Identificar quando a voz ajuda e quando interrompe."
+        ],
+        [
+          "Testar a compreensão",
+          "Apresentar o conceito e pedir que a pessoa explique o papel do Viby e o papel do motor local."
+        ],
+        [
+          "Observar três tarefas",
+          "Configurar uma conexão em protótipo, iniciar/encerrar um ditado e recuperar-se de uma falha simulada."
+        ],
+        [
+          "Aprender com evidência",
+          "Observar conclusão, dúvidas, erros e confiança no estado. Não inferir ganho de produtividade sem medição."
+        ]
+      ],
+      "note": "Não criar telemetria de conteúdo. Fazer avaliação observacional com consentimento; não reter áudio/transcrições como parte do produto."
+    },
+    {
+      "kind": "handoff",
+      "section": "Governança / entrega",
+      "title": "Uma fonte de verdade.\nMuitas aplicações.",
+      "items": [
+        [
+          "Símbolo",
+          "SVG aprovado e fonte Illustrator preservados. Os derivados não substituem o original."
+        ],
+        [
+          "Cor",
+          "palette.json descreve as 56 cores; CSV e CSS são exportações de uso. Os tokens atuais do app preservam seus valores."
+        ],
+        [
+          "Livro e mocks",
+          "Gerador e conteúdo permitem revisar a narrativa, refazer o PDF e exportar os vetores e PNGs."
+        ],
+        [
+          "Mudanças",
+          "Novas aplicações podem seguir o sistema. Alterar símbolo, verde principal ou posicionamento exige uma decisão explícita."
+        ]
+      ],
+      "note": "Não criar uma release do app apenas para atualizar este livro. Registrar o trabalho em Unreleased e preservar as versões numéricas já publicadas."
+    },
+    {
+      "kind": "sources",
+      "section": "Créditos / referências",
+      "title": "Criado para ser\nusado e continuado.",
+      "intro": "Viby · Brandbook e aplicações · Edição 01 · 30 de outubro de 2026.",
+      "items": [
+        [
+          "Base do projeto",
+          "Direção e logo aprovadas pelo proprietário. Código e documentação do Viby: github.com/jovi-tsx/viby."
+        ],
+        [
+          "Arquétipos",
+          "Referência conceitual: sistema de 12 arquétipos de Carol S. Pearson. A combinação adotada é uma decisão criativa para esta marca."
+        ],
+        [
+          "Cor e contraste",
+          "W3C CSS Color 4 (OKLCH/sRGB) e WCAG 2.2, critério 1.4.3. Valores e pares calculados para este guia."
+        ],
+        [
+          "Tipografia e arquivos",
+          "Manrope, The Manrope Project Authors, SIL OFL 1.1. Arte e código próprios do projeto: MIT. Fontes mantêm a licença original."
+        ]
+      ],
+      "note": "Mocks são aplicações de marca e não evidência de funcionalidades prontas. As hipóteses de descoberta não substituem pesquisa com usuários."
+    }
+  ]
+}

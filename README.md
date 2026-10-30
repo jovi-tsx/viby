@@ -140,6 +140,7 @@ not claim that arbitrary AI runtimes can already be connected.
 
 Viby is minimalist and welcoming: the approved waveform V and typing cursor,
 a clear voice and a locally bundled typeface. See the
+[complete 36-page brandbook](assets/branding/brandbook/viby-brandbook.pdf), the
 [brand guide](assets/branding/brand-guide.md), browse the
 [visual brand sheet](assets/branding/brand-sheet.html), or
 [download the SVG/PNG/source kit](assets/branding/viby-brand-kit.zip).

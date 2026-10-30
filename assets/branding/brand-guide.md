@@ -5,6 +5,15 @@ Version 1 · 29 October 2026 · Minimalist and welcoming
 [Visual brand sheet](brand-sheet.html) · [Download the kit](viby-brand-kit.zip) ·
 [Asset inventory and regeneration](README.md)
 
+## Expanded brandbook
+
+The [complete Portuguese brandbook](brandbook/viby-brandbook.pdf) defines the
+Companion/Everyperson archetype with Creator support and the complete tonal
+palette. Its [56-color source](brandbook/palette.json), wallpapers, watermark
+exports and software mockups are in [the brandbook kit](brandbook/README.md).
+This English guide remains the concise operational reference. Current app
+token values and the approved symbol are unchanged.
+
 ## The idea
 
 Viby makes room for your voice in the Windows desktop. It is the interaction
